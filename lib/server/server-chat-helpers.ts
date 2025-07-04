@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
 /**
- * Holt das aktuelle Server-User-Profil (ohne API-Keys ins Profil zu mappen)
+ * Holt das aktuelle Server-User-Profil (mit Azure API-Daten aus ENV)
  */
 export async function getServerProfile() {
   const cookieStore = cookies()
@@ -36,13 +36,20 @@ export async function getServerProfile() {
     throw new Error("Profile not found")
   }
 
-  return profile
+  return {
+    ...profile,
+    azure_openai_api_key: process.env.AZURE_OPENAI_API_KEY,
+    azure_openai_endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    azure_openai_35_turbo_id: process.env.AZURE_GPT_35_TURBO_NAME,
+    azure_openai_45_turbo_id: process.env.AZURE_GPT_45_TURBO_NAME,
+    azure_openai_45_vision_id: process.env.AZURE_GPT_45_VISION_NAME
+  }
 }
 
 /**
  * Prüft, ob ein API-Key vorhanden ist
  */
-export function checkApiKey(apiKey: string | null, keyName: string) {
+export function checkApiKey(apiKey: string | null | undefined, keyName: string) {
   if (!apiKey) {
     throw new Error(`${keyName} API Key not found`)
   }
