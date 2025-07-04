@@ -230,7 +230,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
           className="ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring text-md flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           placeholder={t(
             // Original: Ask anything. Type @  /  #  !
-            'Stelle eine beliebige Frage. Tippe "@" für Assistenten, "/" für Vorlagen, "#" für Dateien und "!" für Tools.'
+            'Wie kann ich dir heute helfen?'
           )}
           onValueChange={handleInputChange}
           value={userInput}
