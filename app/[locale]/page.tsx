@@ -4,9 +4,20 @@ import Image from "next/image"
 import { IconArrowRight } from "@tabler/icons-react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 export default function HomePage() {
   const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    // Kein Render, bis das Theme geladen ist
+    return null
+  }
 
   const logoSrc = theme === "light"
     ? "/assets/logo/Icon light.svg"
@@ -21,8 +32,8 @@ export default function HomePage() {
         <Image
           src={logoSrc}
           alt="YouRank Logo"
-          width={300}
-          height={300}
+          width={150}
+          height={150}
         />
       </div>
 
