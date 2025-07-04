@@ -2,38 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Lufga Font einbinden */
 @font-face {
   font-family: 'Lufga';
   src: url('/fonts/lufga/LufgaRegular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-}
-
-
-::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #ccc;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: #aaa;
-}
-
-::-webkit-scrollbar-track:hover {
-  background-color: #f2f2f2;
-}
-
-::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
 }
 
 @layer base {
@@ -100,15 +74,35 @@
 
     --ring: 0 0% 14.9%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
-  body {
-  @apply bg-background text-foreground;
-  font-family: 'Lufga', sans-serif;
-  }
 
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Lufga', sans-serif;
+  }
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #aaa;
+}
+::-webkit-scrollbar-track:hover {
+  background-color: #f2f2f2;
+}
+::-webkit-scrollbar-corner {
+  background-color: transparent;
 }
