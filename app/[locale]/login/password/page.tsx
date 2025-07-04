@@ -23,7 +23,7 @@ export default function ChangePasswordPage() {
   }, [])
 
   if (loading) {
-    return null
+    return <div>Laden...</div>
   }
 
   return <ChangePassword />
