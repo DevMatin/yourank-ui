@@ -16,6 +16,9 @@ module.exports = {
       }
     },
     extend: {
+      fontFamily: {
+        sans: ['Lufga', 'sans-serif']
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -72,5 +75,8 @@ module.exports = {
       }
     }
   },
-  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')]
+  plugins: [
+    require('tailwindcss-animate'),
+    require('@tailwindcss/typography')
+  ]
 }
