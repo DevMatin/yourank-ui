@@ -14,7 +14,7 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
       : "/assets/logo/logo-light.svg"
 
   return (
-    <div className="flex flex-col items-center opacity-80">
+    <div className="flex flex-col items-center opacity-100">
       <div className="mb-2">
         <Image
           src={logoSrc}
