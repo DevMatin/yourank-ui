@@ -3,26 +3,8 @@
 import Image from "next/image"
 import { IconArrowRight } from "@tabler/icons-react"
 import Link from "next/link"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
 
 export default function HomePage() {
-  const { theme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    // Kein Render, bis das Theme geladen ist
-    return null
-  }
-
-  const logoSrc = theme === "light"
-    ? "/assets/logo/Icon light.svg"
-    : "/assets/logo/Icon dark.svg"
-
   return (
     <div className="flex size-full flex-col items-center justify-center">
       <div
@@ -30,7 +12,7 @@ export default function HomePage() {
         onContextMenu={(e) => e.preventDefault()}
       >
         <Image
-          src={logoSrc}
+          src="/assets/logo/Icon light.svg"
           alt="YouRank Logo"
           width={150}
           height={150}
