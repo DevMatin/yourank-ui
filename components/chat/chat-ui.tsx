@@ -18,7 +18,6 @@ import { ChatInput } from "./chat-input"
 import { ChatMessages } from "./chat-messages"
 import { ChatScrollButtons } from "./chat-scroll-buttons"
 import { ChatSecondaryButtons } from "./chat-secondary-buttons"
-import Image from "next/image"
 
 interface ChatUIProps {}
 
@@ -29,7 +28,6 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   const {
     setChatMessages,
-    chatMessages,
     selectedChat,
     setSelectedChat,
     setChatSettings,
@@ -215,20 +213,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       >
         <div ref={messagesStartRef} />
 
-        {chatMessages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <Image
-              src="/assets/logo/logo-light.svg" // Dein Logo-Pfad anpassen!
-              alt="Your Logo"
-              width={150}
-              height={150}
-              className="opacity-50"
-            />
-            <p className="mt-4 text-muted-foreground">Start your first conversation!</p>
-          </div>
-        ) : (
-          <ChatMessages />
-        )}
+        <ChatMessages />
 
         <div ref={messagesEndRef} />
       </div>
