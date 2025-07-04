@@ -22,7 +22,7 @@ export default function HomePage() {
       <div className="mt-2 text-4xl font-bold">YouRank AI</div>
 
       <Link
-        className="mt-4 flex w-[240px] items-center justify-center rounded-md bg-brand dark:bg-brand-dark hover:opacity-80 p-2 font-semibold transition"
+        className="mt-4 flex w-[240px] items-center justify-center rounded-md bg-brandbutton hover:opacity-80 p-2 font-semibold transition text-black"
         href="/login"
       >
         Sag Hallo zu YouRank AI
