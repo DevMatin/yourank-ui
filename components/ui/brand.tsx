@@ -19,14 +19,14 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
       <div className="mb-2">
         {theme === "dark" ? (
           <Image
-            src="/assets/logo/logo-light.svg"
+            src="/assets/logo/logo-dark.svg"
             alt="Yourank Logo"
             width={120}
             height={120}
           />
         ) : (
           <Image
-            src="/assets/logo/logo-dark.svg"
+            src="/assets/logo/logo-light.svg"
             alt="Yourank Logo"
             width={120}
             height={120}
