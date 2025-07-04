@@ -41,7 +41,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     if (isOpen) {
       setTimeout(() => {
         inputRef.current?.focus()
-      }, 100) // FIX: hacky
+      }, 100)
     }
   }, [isOpen])
 
@@ -93,38 +93,31 @@ export const ModelSelect: FC<ModelSelectProps> = ({
       <DropdownMenuTrigger
         className="bg-background w-full justify-start border-2 px-3 py-5"
         asChild
-        disabled={allModels.length === 0}
       >
-        {allModels.length === 0 ? (
-          <div className="rounded text-sm font-bold">
-            Unlock models by entering API keys in your profile settings.
+        <Button
+          ref={triggerRef}
+          className="flex items-center justify-between"
+          variant="ghost"
+        >
+          <div className="flex items-center">
+            {selectedModel ? (
+              <>
+                <ModelIcon
+                  provider={selectedModel?.provider}
+                  width={26}
+                  height={26}
+                />
+                <div className="ml-2 flex items-center">
+                  {selectedModel?.modelName}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center">Select a model</div>
+            )}
           </div>
-        ) : (
-          <Button
-            ref={triggerRef}
-            className="flex items-center justify-between"
-            variant="ghost"
-          >
-            <div className="flex items-center">
-              {selectedModel ? (
-                <>
-                  <ModelIcon
-                    provider={selectedModel?.provider}
-                    width={26}
-                    height={26}
-                  />
-                  <div className="ml-2 flex items-center">
-                    {selectedModel?.modelName}
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center">Select a model</div>
-              )}
-            </div>
 
-            <IconChevronDown />
-          </Button>
-        )}
+          <IconChevronDown />
+        </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -136,7 +129,6 @@ export const ModelSelect: FC<ModelSelectProps> = ({
           {availableLocalModels.length > 0 && (
             <TabsList defaultValue="hosted" className="grid grid-cols-2">
               <TabsTrigger value="hosted">Hosted</TabsTrigger>
-
               <TabsTrigger value="local">Local</TabsTrigger>
             </TabsList>
           )}
@@ -174,24 +166,22 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                 </div>
 
                 <div className="mb-4">
-                  {filteredModels.map(model => {
-                    return (
-                      <div
-                        key={model.modelId}
-                        className="flex items-center space-x-1"
-                      >
-                        {selectedModelId === model.modelId && (
-                          <IconCheck className="ml-2" size={32} />
-                        )}
+                  {filteredModels.map(model => (
+                    <div
+                      key={model.modelId}
+                      className="flex items-center space-x-1"
+                    >
+                      {selectedModelId === model.modelId && (
+                        <IconCheck className="ml-2" size={32} />
+                      )}
 
-                        <ModelOption
-                          key={model.modelId}
-                          model={model}
-                          onSelect={() => handleSelectModel(model.modelId)}
-                        />
-                      </div>
-                    )
-                  })}
+                      <ModelOption
+                        key={model.modelId}
+                        model={model}
+                        onSelect={() => handleSelectModel(model.modelId)}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             )
