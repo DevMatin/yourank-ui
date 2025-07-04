@@ -19,11 +19,11 @@ export async function POST(request: Request) {
 
     checkApiKey(profile.openai_api_key, "OpenAI")
 
-    const openai = new OpenAI({
-      apiKey: profile.openai_api_key || "",
-      baseURL: `${profile.openai_endpoint}/openai/deployments/${profile.openai_deployment}`,
-      defaultQuery: { "api-version": "2025-04-14" }
-    })
+const openai = new OpenAI({
+  apiKey: profile.openai_api_key || "",
+  baseURL: "https://yourankai.openai.azure.com/openai/deployments/gpt-4-1", // oder baue es aus ENV
+  defaultQuery: { "api-version": "2025-04-14" }
+})
 
     let allTools: OpenAI.Chat.Completions.ChatCompletionTool[] = []
     let allRouteMaps = {}
