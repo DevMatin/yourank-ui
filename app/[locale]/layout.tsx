@@ -10,10 +10,10 @@ import { cookies } from "next/headers"
 import { ReactNode } from "react"
 import "./globals.css"
 
-const APP_NAME = "Chatbot UI"
-const APP_DEFAULT_TITLE = "Chatbot UI"
-const APP_TITLE_TEMPLATE = "%s - Chatbot UI"
-const APP_DESCRIPTION = "Chabot UI PWA!"
+const APP_NAME = "YouRank AI"
+const APP_DEFAULT_TITLE = "YouRank AI"
+const APP_TITLE_TEMPLATE = "%s - YouRank AI"
+const APP_DESCRIPTION = "YouRank AI – Dein smarter Assistent."
 
 interface RootLayoutProps {
   children: ReactNode
