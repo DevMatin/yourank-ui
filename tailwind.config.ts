@@ -54,8 +54,8 @@ module.exports = {
           foreground: 'hsl(var(--card-foreground))'
         },
           brand: {
-          DEFAULT: '#3B82F6', // z.B. dein individuelles Blau
-          dark: '#1E40AF'
+          DEFAULT: '#144c41', // z.B. dein individuelles Blau
+          dark: '#6ee7b7'
         }
         
       },
