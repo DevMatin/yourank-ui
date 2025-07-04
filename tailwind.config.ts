@@ -52,7 +52,12 @@ module.exports = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
+        },
+          brand: {
+          DEFAULT: '#3B82F6', // z.B. dein individuelles Blau
+          dark: '#1E40AF'
         }
+        
       },
       borderRadius: {
         lg: 'var(--radius)',
