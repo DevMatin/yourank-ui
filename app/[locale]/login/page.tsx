@@ -11,7 +11,7 @@ import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
-  title: "Login"
+  title: "Anmelden"
 }
 
 export default async function Login({
@@ -74,7 +74,7 @@ export default async function Login({
 
     if (!homeWorkspace) {
       throw new Error(
-        homeWorkspaceError?.message || "An unexpected error occurred"
+        homeWorkspaceError?.message || "Ein unerwarteter Fehler ist aufgetreten."
       )
     }
 
@@ -114,7 +114,7 @@ export default async function Login({
       const emailMatch = emailWhitelist?.includes(email)
       if (!domainMatch && !emailMatch) {
         return redirect(
-          `/login?message=Email ${email} is not allowed to sign up.`
+          `/login?message=Die E-Mail-Adresse ${email} ist für die Registrierung nicht zugelassen.`
         )
       }
     }
@@ -158,7 +158,7 @@ export default async function Login({
       return redirect(`/login?message=${error.message}`)
     }
 
-    return redirect("/login?message=Check email to reset password")
+    return redirect("/login?message=Bitte prüfe deine E-Mails, um das Passwort zurückzusetzen.")
   }
 
   return (
@@ -170,17 +170,17 @@ export default async function Login({
         <Brand />
 
         <Label className="text-md mt-4" htmlFor="email">
-          Email
+          E-Mail
         </Label>
         <Input
           className="mb-3 rounded-md border bg-inherit px-4 py-2"
           name="email"
-          placeholder="you@example.com"
+          placeholder="du@beispiel.de"
           required
         />
 
         <Label className="text-md" htmlFor="password">
-          Password
+          Passwort
         </Label>
         <Input
           className="mb-6 rounded-md border bg-inherit px-4 py-2"
@@ -190,23 +190,23 @@ export default async function Login({
         />
 
         <SubmitButton className="mb-2 rounded-md bg-brandbutton dark:bg-brandbutton hover:opacity-80 px-4 py-2 text-black dark:text-white">
-          Login
+          Anmelden
         </SubmitButton>
 
         <SubmitButton
           formAction={signUp}
           className="border-foreground/20 mb-2 rounded-md border px-4 py-2"
         >
-          Sign Up
+          Registrieren
         </SubmitButton>
 
         <div className="text-muted-foreground mt-1 flex justify-center text-sm">
-          <span className="mr-1">Forgot your password?</span>
+          <span className="mr-1">Passwort vergessen?</span>
           <button
             formAction={handleResetPassword}
             className="text-primary ml-1 underline hover:opacity-80"
           >
-            Reset
+            Zurücksetzen
           </button>
         </div>
 
