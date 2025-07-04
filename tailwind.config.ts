@@ -53,6 +53,10 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
         },
+          brandbutton: {
+          DEFAULT: '#35a7ae', // z.B. dein individuelles Blau
+          dark: '#6ee7b7'
+        },
           brand: {
           DEFAULT: '#144c41', // z.B. dein individuelles Blau
           dark: '#6ee7b7'
