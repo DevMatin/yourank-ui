@@ -21,19 +21,22 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
           <Image
             src="/assets/logo/logo-dark.svg"
             alt="Yourank Logo"
-            width={1069}
-            height={300}
+            width={500}
+            height={0} // Höhe wird automatisch anhand des Seitenverhältnisses berechnet
+            style={{ height: "auto" }}
           />
         ) : (
           <Image
             src="/assets/logo/logo-light.svg"
             alt="Yourank Logo"
-            width={1069}
-            height={300}
+            width={500}
+            height={0}
+            style={{ height: "auto" }}
           />
         )}
       </div>
 
+      {/* Wenn du keinen Text willst, lass das leer */}
       <div className="text-4xl font-bold tracking-wide">&nbsp;</div>
     </Link>
   )
