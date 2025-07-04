@@ -34,7 +34,7 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
         )}
       </div>
 
-      <div className="text-4xl font-bold tracking-wide">YouRank AI</div>
+      <div className="text-4xl font-bold tracking-wide">&nbsp;</div>
     </Link>
   )
 }
