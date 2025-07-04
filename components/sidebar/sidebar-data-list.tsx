@@ -49,6 +49,25 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   const [isOverflowing, setIsOverflowing] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
 
+  // Deutsch: Kategorien und Content Labels
+  const CATEGORY_LABELS: Record<string, string> = {
+    Today: "Heute",
+    Yesterday: "Gestern",
+    "Previous Week": "Letzte Woche",
+    Older: "Älter"
+  }
+
+  const CONTENT_LABELS: Record<string, string> = {
+    chats: "Chats",
+    presets: "Vorlagen",
+    prompts: "Prompts",
+    files: "Dateien",
+    collections: "Sammlungen",
+    assistants: "Assistenten",
+    tools: "Tools",
+    models: "Modelle"
+  }
+
   const getDataListComponent = (
     contentType: ContentType,
     item: DataItemType
@@ -56,16 +75,12 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
     switch (contentType) {
       case "chats":
         return <ChatItem key={item.id} chat={item as Tables<"chats">} />
-
       case "presets":
         return <PresetItem key={item.id} preset={item as Tables<"presets">} />
-
       case "prompts":
         return <PromptItem key={item.id} prompt={item as Tables<"prompts">} />
-
       case "files":
         return <FileItem key={item.id} file={item as Tables<"files">} />
-
       case "collections":
         return (
           <CollectionItem
@@ -73,7 +88,6 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
             collection={item as Tables<"collections">}
           />
         )
-
       case "assistants":
         return (
           <AssistantItem
@@ -81,13 +95,10 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
             assistant={item as Tables<"assistants">}
           />
         )
-
       case "tools":
         return <ToolItem key={item.id} tool={item as Tables<"tools">} />
-
       case "models":
         return <ModelItem key={item.id} model={item as Tables<"models">} />
-
       default:
         return null
     }
@@ -156,12 +167,10 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
   const updateFolder = async (itemId: string, folderId: string | null) => {
     const item: any = data.find(item => item.id === itemId)
-
     if (!item) return null
 
     const updateFunction = updateFunctions[contentType]
     const setStateFunction = stateUpdateFunctions[contentType]
-
     if (!updateFunction || !setStateFunction) return
 
     const updatedItem = await updateFunction(item.id, {
@@ -195,14 +204,11 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-
     const target = e.target as Element
-
     if (!target.closest("#folder")) {
       const itemId = e.dataTransfer.getData("text/plain")
       updateFolder(itemId, null)
     }
-
     setIsDragOver(false)
   }
 
@@ -226,8 +232,8 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
       >
         {data.length === 0 && (
           <div className="flex grow flex-col items-center justify-center">
-            <div className=" text-centertext-muted-foreground p-8 text-lg italic">
-              No {contentType}.
+            <div className="text-center text-muted-foreground p-8 text-lg italic">
+              {`Keine ${CONTENT_LABELS[contentType] || ""}.`}
             </div>
           </div>
         )}
@@ -278,9 +284,8 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                       sortedData.length > 0 && (
                         <div key={dateCategory} className="pb-2">
                           <div className="text-muted-foreground mb-1 text-sm font-bold">
-                            {dateCategory}
+                            {CATEGORY_LABELS[dateCategory]}
                           </div>
-
                           <div
                             className={cn(
                               "flex grow flex-col",
