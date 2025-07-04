@@ -32,9 +32,8 @@ export async function getServerProfile() {
     throw new Error("Profile not found")
   }
 
-  const profileWithKeys = addApiKeysToProfile(profile)
-
-  return profileWithKeys
+  return profile;
+  
 }
 
 function addApiKeysToProfile(profile: Tables<"profiles">) {
