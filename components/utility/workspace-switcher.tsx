@@ -1,9 +1,93 @@
-// ...deine Imports...
+"use client"
+
+import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover"
+import { ChatbotUIContext } from "@/context/context"
+import { createWorkspace } from "@/db/workspaces"
+import useHotkey from "@/lib/hooks/use-hotkey"
+import { IconBuilding, IconHome, IconPlus } from "@tabler/icons-react"
+import { ChevronsUpDown } from "lucide-react"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { FC, useContext, useEffect, useState } from "react"
+import { Button } from "../ui/button"
+import { Input } from "../ui/input"
+
+interface WorkspaceSwitcherProps {}
 
 export const WorkspaceSwitcher: FC<WorkspaceSwitcherProps> = ({}) => {
   useHotkey(";", () => setOpen(prevState => !prevState))
 
-  // ...Context, State, Hooks, Logik...
+  const {
+    workspaces,
+    workspaceImages,
+    selectedWorkspace,
+    setSelectedWorkspace,
+    setWorkspaces
+  } = useContext(ChatbotUIContext)
+
+  const { handleNewChat } = useChatHandler()
+
+  const router = useRouter()
+
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState("")
+  const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    if (!selectedWorkspace) return
+
+    setValue(selectedWorkspace.id)
+  }, [selectedWorkspace])
+
+  const handleCreateWorkspace = async () => {
+    if (!selectedWorkspace) return
+
+    const createdWorkspace = await createWorkspace({
+      user_id: selectedWorkspace.user_id,
+      default_context_length: selectedWorkspace.default_context_length,
+      default_model: selectedWorkspace.default_model,
+      default_prompt: selectedWorkspace.default_prompt,
+      default_temperature: selectedWorkspace.default_temperature,
+      description: "",
+      embeddings_provider: "openai",
+      include_profile_context: selectedWorkspace.include_profile_context,
+      include_workspace_instructions:
+        selectedWorkspace.include_workspace_instructions,
+      instructions: selectedWorkspace.instructions,
+      is_home: false,
+      name: "Neuer Arbeitsbereich"
+    })
+
+    setWorkspaces([...workspaces, createdWorkspace])
+    setSelectedWorkspace(createdWorkspace)
+    setOpen(false)
+
+    return router.push(`/${createdWorkspace.id}/chat`)
+  }
+
+  const getWorkspaceName = (workspaceId: string) => {
+    const workspace = workspaces.find(workspace => workspace.id === workspaceId)
+
+    if (!workspace) return
+
+    return workspace.name
+  }
+
+  const handleSelect = (workspaceId: string) => {
+    const workspace = workspaces.find(workspace => workspace.id === workspaceId)
+
+    if (!workspace) return
+
+    setSelectedWorkspace(workspace)
+    setOpen(false)
+
+    return router.push(`/${workspace.id}/chat`)
+  }
 
   const workspaceImage = workspaceImages.find(
     image => image.workspaceId === selectedWorkspace?.id
