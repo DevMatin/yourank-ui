@@ -21,15 +21,15 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
           <Image
             src="/assets/logo/logo-dark.svg"
             alt="Yourank Logo"
-            width={120}
-            height={120}
+            width={1069}
+            height={300}
           />
         ) : (
           <Image
             src="/assets/logo/logo-light.svg"
             alt="Yourank Logo"
-            width={120}
-            height={120}
+            width={1069}
+            height={300}
           />
         )}
       </div>
