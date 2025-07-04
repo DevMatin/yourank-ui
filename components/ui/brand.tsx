@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import Image from "next/image"
 import { FC } from "react"
 
@@ -9,35 +8,21 @@ interface BrandProps {
 }
 
 export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
-  return (
-    <Link
-      className="flex cursor-pointer flex-col items-center hover:opacity-50"
-      href="https://www.yourank.de"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <div className="mb-2">
-        {theme === "dark" ? (
-          <Image
-            src="/assets/logo/logo-dark.svg"
-            alt="Yourank Logo"
-            width={500}
-            height={0} // Höhe wird automatisch anhand des Seitenverhältnisses berechnet
-            style={{ height: "auto" }}
-          />
-        ) : (
-          <Image
-            src="/assets/logo/logo-light.svg"
-            alt="Yourank Logo"
-            width={500}
-            height={0}
-            style={{ height: "auto" }}
-          />
-        )}
-      </div>
+  const logoSrc = theme === "dark"
+    ? "/assets/logo/logo-dark.svg"
+    : "/assets/logo/logo-light.svg"
 
-      {/* Wenn du keinen Text willst, lass das leer */}
-      <div className="text-4xl font-bold tracking-wide">&nbsp;</div>
-    </Link>
+  return (
+    <div className="flex flex-col items-center opacity-80">
+      <div className="mb-2">
+        <Image
+          src={logoSrc}
+          alt="Yourank Logo"
+          width={500}
+          height={0}
+          style={{ height: "auto", width: "100%", maxWidth: "500px" }}
+        />
+      </div>
+    </div>
   )
 }
