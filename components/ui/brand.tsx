@@ -8,12 +8,13 @@ interface BrandProps {
 }
 
 export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
-  const logoSrc = theme === "dark"
-    ? "/assets/logo/logo-dark.svg"
-    : "/assets/logo/logo-light.svg"
+  const logoSrc =
+    theme === "dark"
+      ? "/assets/logo/logo-dark.svg"
+      : "/assets/logo/logo-light.svg"
 
   return (
-    <div className="flex flex-col items-center opacity-90">
+    <div className="flex flex-col items-center opacity-80">
       <div className="mb-2">
         <Image
           src={logoSrc}
@@ -21,7 +22,8 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
           width={500}
           height={0}
           style={{ height: "auto", width: "100%", maxWidth: "500px" }}
-          draggable={false}  
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
     </div>
