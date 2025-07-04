@@ -19,7 +19,9 @@ export async function getServerProfile() {
     }
   )
 
-  const { data: user } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getUser()
+  const user = data.user
+
   if (!user) {
     throw new Error("User not found")
   }
