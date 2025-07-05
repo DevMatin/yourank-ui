@@ -3,9 +3,12 @@ import { get } from "@vercel/edge-config"
 export async function getConfig(name: string): Promise<string | undefined> {
   if (process.env.EDGE_CONFIG) {
     try {
-      return (await get(name)) as string | undefined
+      const value = (await get<string | undefined>(name))
+      if (value !== undefined) {
+        return value
+      }
     } catch {
-      return undefined
+      // ignore edge config errors and fall back to env
     }
   }
   return process.env[name]

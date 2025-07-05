@@ -45,8 +45,9 @@ npm run chat
 
 Optional kannst du Vercel [Edge Config](https://vercel.com/docs/storage/edge-config) nutzen.
 Setze dafür `EDGE_CONFIG` und hinterlege deine Keys dort.
-Unsere neue `getConfig` Funktion liest zuerst aus Edge Config und greift
-falls nicht vorhanden auf lokale Umgebungsvariablen zurück.
+Unsere neue `getConfig` Funktion liest zuerst aus Edge Config und greift,
+falls kein Wert gefunden wird oder ein Fehler auftritt, auf lokale
+Umgebungsvariablen zurück.
 
 🛠 Tech Stack
 Next.js (App Router)
