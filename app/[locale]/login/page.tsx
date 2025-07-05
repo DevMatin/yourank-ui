@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button"
 import { createClient } from "@/lib/supabase/server"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
-import { getConfig } from "@/lib/config"
+import { requireConfig, getConfig } from "@/lib/config"
 import { Metadata } from "next"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
@@ -21,8 +21,8 @@ export default async function Login({
 }) {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
-    await getConfig("NEXT_PUBLIC_SUPABASE_URL")!,
-    await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")!,
+    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
+    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     {
       cookies: {
         get(name: string) {

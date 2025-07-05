@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { getConfig } from "../config"
+import { requireConfig } from "../config"
 
 export const createClient = async (request: NextRequest) => {
   let response = NextResponse.next({
@@ -10,8 +10,8 @@ export const createClient = async (request: NextRequest) => {
   })
 
   const supabase = createServerClient(
-    (await getConfig("NEXT_PUBLIC_SUPABASE_URL"))!,
-    (await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"))!,
+    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
+    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     {
       cookies: {
         get(name: string) {

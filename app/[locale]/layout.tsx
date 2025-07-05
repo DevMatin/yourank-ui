@@ -5,7 +5,7 @@ import TranslationsProvider from "@/components/utility/translations-provider"
 import initTranslations from "@/lib/i18n"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
-import { getConfig } from "@/lib/config"
+import { requireConfig } from "@/lib/config"
 import { Metadata, Viewport } from "next"
 import { cookies } from "next/headers"
 import { ReactNode } from "react"
@@ -71,8 +71,8 @@ export default async function RootLayout({
 }: RootLayoutProps) {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
-    await getConfig("NEXT_PUBLIC_SUPABASE_URL")!,
-    await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")!,
+    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
+    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     {
       cookies: {
         get(name: string) {

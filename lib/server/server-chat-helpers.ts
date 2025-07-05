@@ -1,7 +1,7 @@
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { getConfig } from "../config"
+import { getConfig, requireConfig } from "../config"
 
 /**
  * Holt das aktuelle Server-User-Profil (mit Azure API-Daten aus ENV)
@@ -9,8 +9,8 @@ import { getConfig } from "../config"
 export async function getServerProfile() {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
-    (await getConfig("NEXT_PUBLIC_SUPABASE_URL"))!,
-    (await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"))!,
+    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
+    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     {
       cookies: {
         get(name: string) {
