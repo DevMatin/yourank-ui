@@ -11,6 +11,8 @@ export const ACCEPTED_FILE_TYPES = [
   "application/json",
   "text/markdown",
   "application/pdf",
+  "application/rtf",
+  "text/rtf",
   "text/plain"
 ].join(",")
 
