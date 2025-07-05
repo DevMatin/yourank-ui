@@ -41,6 +41,13 @@ npm run chat
 3️⃣ Umgebungsvariablen eintragen (siehe .env.local.example)
 4️⃣ Deploy klicken
 
+### Edge Config
+
+Optional kannst du Vercel [Edge Config](https://vercel.com/docs/storage/edge-config) nutzen.
+Setze dafür `EDGE_CONFIG` und hinterlege deine Keys dort.
+Unsere neue `getConfig` Funktion liest zuerst aus Edge Config und greift
+falls nicht vorhanden auf lokale Umgebungsvariablen zurück.
+
 🛠 Tech Stack
 Next.js (App Router)
 
@@ -224,8 +231,8 @@ Retrieve relevant content (retrieve/route.ts): computes an embedding for the use
 Key code excerpt from process/route.ts:
 
 18      const supabaseAdmin = createClient<Database>(
-19        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-20        process.env.SUPABASE_SERVICE_ROLE_KEY!
+19        await getConfig("NEXT_PUBLIC_SUPABASE_URL"),
+20        await getConfig("SUPABASE_SERVICE_ROLE_KEY")
       )
 ...
 61      if (embeddingsProvider === "openai") {

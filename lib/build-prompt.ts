@@ -77,9 +77,7 @@ export async function buildFinalMessages(
     const nextFileItems = nextChatMessage.fileItems
     if (nextFileItems.length > 0) {
       const findFileItems = nextFileItems
-        .map(fileItemId =>
-          chatFileItems.find(f => f.id === fileItemId)
-        )
+        .map(fileItemId => chatFileItems.find(f => f.id === fileItemId))
         .filter((item): item is Tables<"file_items"> => !!item)
 
       const retrievalText = buildRetrievalText(findFileItems)
@@ -125,23 +123,22 @@ export async function buildFinalMessages(
 
   finalMessages = finalMessages.map(message => {
     if (message.image_paths.length > 0) {
-      const imageParts: ImagePart[] = message.image_paths.map((path: string) => {
-        let formedUrl = path
-        if (!path.startsWith("data")) {
-          const chatImage = chatImages.find(img => img.path === path)
-          formedUrl = chatImage?.base64 || path
+      const imageParts: ImagePart[] = message.image_paths.map(
+        (path: string) => {
+          let formedUrl = path
+          if (!path.startsWith("data")) {
+            const chatImage = chatImages.find(img => img.path === path)
+            formedUrl = chatImage?.base64 || path
+          }
+          return {
+            type: "image_url",
+            image_url: { url: formedUrl }
+          }
         }
-        return {
-          type: "image_url",
-          image_url: { url: formedUrl }
-        }
-      })
+      )
       return {
         role: message.role,
-        content: [
-          { type: "text", text: message.content },
-          ...imageParts
-        ]
+        content: [{ type: "text", text: message.content }, ...imageParts]
       }
     }
     return {
@@ -169,24 +166,29 @@ function buildRetrievalText(fileItems: Tables<"file_items">[]) {
   return `You may use the following sources if needed to answer the user's question. If you don't know the answer, say "I don't know."\n\n${retrievalText}`
 }
 
-function adaptSingleMessageForGoogleGemini(message: { role: string, content: string | MessageContentPart[] }) {
+function adaptSingleMessageForGoogleGemini(message: {
+  role: string
+  content: string | MessageContentPart[]
+}) {
   const rawParts: MessageContentPart[] = Array.isArray(message.content)
     ? message.content
     : [{ type: "text", text: message.content }]
 
-  const parts = rawParts.map((part) => {
-    if (part.type === "text") {
-      return { text: part.text }
-    } else if (part.type === "image_url") {
-      return {
-        inlineData: {
-          data: getBase64FromDataURL(part.image_url.url),
-          mimeType: getMediaTypeFromDataURL(part.image_url.url)
+  const parts = rawParts
+    .map(part => {
+      if (part.type === "text") {
+        return { text: part.text }
+      } else if (part.type === "image_url") {
+        return {
+          inlineData: {
+            data: getBase64FromDataURL(part.image_url.url),
+            mimeType: getMediaTypeFromDataURL(part.image_url.url)
+          }
         }
       }
-    }
-    return null
-  }).filter(Boolean)
+      return null
+    })
+    .filter(Boolean)
 
   const role = ["user", "system"].includes(message.role) ? "user" : "model"
   return { role, parts }
@@ -198,13 +200,15 @@ function adaptMessagesForGeminiVision(messages: any[]) {
   const lastMessage = messages[messages.length - 1]
   const visualParts = lastMessage.parts
 
-  return [{
-    role: "user",
-    parts: [
-      `${baseRole}:\n${basePrompt}\n\nuser:\n${visualParts[0].text}\n\n`,
-      ...visualParts.slice(1)
-    ]
-  }]
+  return [
+    {
+      role: "user",
+      parts: [
+        `${baseRole}:\n${basePrompt}\n\nuser:\n${visualParts[0].text}\n\n`,
+        ...visualParts.slice(1)
+      ]
+    }
+  ]
 }
 
 export async function adaptMessagesForGoogleGemini(

@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button"
 import { createClient } from "@/lib/supabase/server"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
-import { get } from "@vercel/edge-config"
+import { getConfig } from "@/lib/config"
 import { Metadata } from "next"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
@@ -21,8 +21,8 @@ export default async function Login({
 }) {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    await getConfig("NEXT_PUBLIC_SUPABASE_URL")!,
+    await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")!,
     {
       cookies: {
         get(name: string) {
@@ -54,7 +54,7 @@ export default async function Login({
     const email = formData.get("email") as string
     const password = formData.get("password") as string
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = await createClient(cookieStore)
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -74,20 +74,12 @@ export default async function Login({
 
     if (!homeWorkspace) {
       throw new Error(
-        homeWorkspaceError?.message || "Ein unerwarteter Fehler ist aufgetreten."
+        homeWorkspaceError?.message ||
+          "Ein unerwarteter Fehler ist aufgetreten."
       )
     }
 
     return redirect(`/${homeWorkspace.id}/chat`)
-  }
-
-  const getEnvVarOrEdgeConfigValue = async (name: string) => {
-    "use server"
-    if (process.env.EDGE_CONFIG) {
-      return await get<string>(name)
-    }
-
-    return process.env[name]
   }
 
   const signUp = async (formData: FormData) => {
@@ -96,14 +88,13 @@ export default async function Login({
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
-    const emailDomainWhitelistPatternsString = await getEnvVarOrEdgeConfigValue(
+    const emailDomainWhitelistPatternsString = await getConfig(
       "EMAIL_DOMAIN_WHITELIST"
     )
     const emailDomainWhitelist = emailDomainWhitelistPatternsString?.trim()
       ? emailDomainWhitelistPatternsString?.split(",")
       : []
-    const emailWhitelistPatternsString =
-      await getEnvVarOrEdgeConfigValue("EMAIL_WHITELIST")
+    const emailWhitelistPatternsString = await getConfig("EMAIL_WHITELIST")
     const emailWhitelist = emailWhitelistPatternsString?.trim()
       ? emailWhitelistPatternsString?.split(",")
       : []
@@ -120,7 +111,7 @@ export default async function Login({
     }
 
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = await createClient(cookieStore)
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -148,7 +139,7 @@ export default async function Login({
     const origin = headers().get("origin")
     const email = formData.get("email") as string
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = await createClient(cookieStore)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/auth/callback?next=/login/password`
@@ -158,7 +149,9 @@ export default async function Login({
       return redirect(`/login?message=${error.message}`)
     }
 
-    return redirect("/login?message=Bitte prüfe deine E-Mails, um das Passwort zurückzusetzen.")
+    return redirect(
+      "/login?message=Bitte prüfe deine E-Mails, um das Passwort zurückzusetzen."
+    )
   }
 
   return (
@@ -189,7 +182,7 @@ export default async function Login({
           placeholder="••••••••"
         />
 
-        <SubmitButton className="mb-2 rounded-md bg-brandbutton dark:bg-brandbutton hover:opacity-80 px-4 py-2 text-black dark:text-white">
+        <SubmitButton className="bg-brandbutton dark:bg-brandbutton mb-2 rounded-md px-4 py-2 text-black hover:opacity-80 dark:text-white">
           Anmelden
         </SubmitButton>
 

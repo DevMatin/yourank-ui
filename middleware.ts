@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   if (i18nResult) return i18nResult
 
   try {
-    const { supabase, response } = createClient(request)
+    const { supabase, response } = await createClient(request)
 
     const session = await supabase.auth.getSession()
 

@@ -23,16 +23,17 @@ export async function GET() {
     azure_embeddings_name: VALID_ENV_KEYS.AZURE_EMBEDDINGS_NAME
   }
 
-  const isUsingEnvKeyMap = Object.keys(envKeyMap).reduce<
-    Record<string, boolean>
-  >((acc, provider) => {
-    const key = envKeyMap[provider]
+  const entries = await Promise.all(
+    Object.keys(envKeyMap).map(async provider => {
+      const key = envKeyMap[provider]
+      if (key) {
+        return [provider, await isUsingEnvironmentKey(key as EnvKey)] as const
+      }
+      return [provider, false] as const
+    })
+  )
 
-    if (key) {
-      acc[provider] = isUsingEnvironmentKey(key as EnvKey)
-    }
-    return acc
-  }, {})
+  const isUsingEnvKeyMap = Object.fromEntries(entries)
 
   return createResponse({ isUsingEnvKeyMap }, 200)
 }

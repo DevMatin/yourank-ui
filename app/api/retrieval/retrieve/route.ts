@@ -2,6 +2,7 @@ import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
 import { Database } from "@/supabase/types"
 import { createClient } from "@supabase/supabase-js"
+import { getConfig } from "@/lib/config"
 import OpenAI from "openai"
 
 export async function POST(request: Request) {
@@ -17,8 +18,8 @@ export async function POST(request: Request) {
 
   try {
     const supabaseAdmin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      (await getConfig("NEXT_PUBLIC_SUPABASE_URL"))!,
+      (await getConfig("SUPABASE_SERVICE_ROLE_KEY"))!
     )
 
     const profile = await getServerProfile()
