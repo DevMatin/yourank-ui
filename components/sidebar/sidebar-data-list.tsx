@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { Tables } from "@/supabase/types"
 import { ContentType, DataItemType, DataListType } from "@/types"
 import { FC, useContext, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Separator } from "../ui/separator"
 import { AssistantItem } from "./items/assistants/assistant-item"
 import { ChatItem } from "./items/chat/chat-item"
@@ -33,6 +34,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   data,
   folders
 }) => {
+  const { t } = useTranslation()
   const {
     setChats,
     setPresets,
@@ -49,23 +51,22 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   const [isOverflowing, setIsOverflowing] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
 
-  // Deutsch: Kategorien und Content Labels
-  const CATEGORY_LABELS: Record<string, string> = {
-    Today: "Heute",
-    Yesterday: "Gestern",
-    "Previous Week": "Letzte Woche",
-    Older: "Älter"
+  const CATEGORY_KEYS: Record<string, string> = {
+    Today: "sidebar.today",
+    Yesterday: "sidebar.yesterday",
+    "Previous Week": "sidebar.previousWeek",
+    Older: "sidebar.older"
   }
 
-  const CONTENT_LABELS: Record<string, string> = {
-    chats: "Chats",
-    presets: "Vorlagen",
-    prompts: "Prompts",
-    files: "Dateien",
-    collections: "Sammlungen",
-    assistants: "Assistenten",
-    tools: "Tools",
-    models: "Modelle"
+  const CONTENT_KEYS: Record<ContentType, string> = {
+    chats: "contentTypePlural.chats",
+    presets: "contentTypePlural.presets",
+    prompts: "contentTypePlural.prompts",
+    files: "contentTypePlural.files",
+    collections: "contentTypePlural.collections",
+    assistants: "contentTypePlural.assistants",
+    tools: "contentTypePlural.tools",
+    models: "contentTypePlural.models"
   }
 
   const getDataListComponent = (
@@ -233,7 +234,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
         {data.length === 0 && (
           <div className="flex grow flex-col items-center justify-center">
             <div className="text-center text-muted-foreground p-8 text-lg italic">
-              {`Keine ${CONTENT_LABELS[contentType] || ""}.`}
+              {t("sidebar.noItems", { items: t(CONTENT_KEYS[contentType]) })}
             </div>
           </div>
         )}
@@ -284,7 +285,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                       sortedData.length > 0 && (
                         <div key={dateCategory} className="pb-2">
                           <div className="text-muted-foreground mb-1 text-sm font-bold">
-                            {CATEGORY_LABELS[dateCategory]}
+                            {t(CATEGORY_KEYS[dateCategory])}
                           </div>
                           <div
                             className={cn(

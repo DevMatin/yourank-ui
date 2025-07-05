@@ -4,6 +4,7 @@ import { createFolder } from "@/db/folders"
 import { ContentType } from "@/types"
 import { IconFolderPlus, IconPlus } from "@tabler/icons-react"
 import { FC, useContext, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "../ui/button"
 import { CreateAssistant } from "./items/assistants/create-assistant"
 import { CreateCollection } from "./items/collections/create-collection"
@@ -22,6 +23,7 @@ export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
   contentType,
   hasData
 }) => {
+  const { t } = useTranslation()
   const { profile, selectedWorkspace, folders, setFolders } =
     useContext(ChatbotUIContext)
   const { handleNewChat } = useChatHandler()
@@ -34,6 +36,17 @@ export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
   const [isCreatingTool, setIsCreatingTool] = useState(false)
   const [isCreatingModel, setIsCreatingModel] = useState(false)
 
+  const SINGULAR_KEYS: Record<ContentType, string> = {
+    chats: "contentTypeSingular.chat",
+    presets: "contentTypeSingular.preset",
+    prompts: "contentTypeSingular.prompt",
+    files: "contentTypeSingular.file",
+    collections: "contentTypeSingular.collection",
+    assistants: "contentTypeSingular.assistant",
+    tools: "contentTypeSingular.tool",
+    models: "contentTypeSingular.model"
+  }
+
   const handleCreateFolder = async () => {
     if (!profile) return
     if (!selectedWorkspace) return
@@ -41,7 +54,7 @@ export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
     const createdFolder = await createFolder({
       user_id: profile.user_id,
       workspace_id: selectedWorkspace.id,
-      name: "New Folder",
+      name: t("sidebar.newFolder"),
       description: "",
       type: contentType
     })
@@ -99,9 +112,7 @@ export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
     <div className="flex w-full space-x-2">
       <Button className="flex h-[36px] grow" onClick={getCreateFunction()}>
         <IconPlus className="mr-1" size={20} />
-        New{" "}
-        {contentType.charAt(0).toUpperCase() +
-          contentType.slice(1, contentType.length - 1)}
+        {t("sidebar.newItem", { item: t(SINGULAR_KEYS[contentType]) })}
       </Button>
 
       {hasData && (

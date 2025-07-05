@@ -1,5 +1,6 @@
 import { ContentType } from "@/types"
 import { FC } from "react"
+import { useTranslation } from "react-i18next"
 import { TabsTrigger } from "../ui/tabs"
 import { WithTooltip } from "../ui/with-tooltip"
 
@@ -14,11 +15,21 @@ export const SidebarSwitchItem: FC<SidebarSwitchItemProps> = ({
   icon,
   onContentTypeChange
 }) => {
+  const { t } = useTranslation()
+
+  const CONTENT_KEYS: Record<ContentType, string> = {
+    chats: "contentTypePlural.chats",
+    presets: "contentTypePlural.presets",
+    prompts: "contentTypePlural.prompts",
+    files: "contentTypePlural.files",
+    collections: "contentTypePlural.collections",
+    assistants: "contentTypePlural.assistants",
+    tools: "contentTypePlural.tools",
+    models: "contentTypePlural.models"
+  }
   return (
     <WithTooltip
-      display={
-        <div>{contentType[0].toUpperCase() + contentType.substring(1)}</div>
-      }
+      display={<div>{t(CONTENT_KEYS[contentType])}</div>}
       trigger={
         <TabsTrigger
           className="hover:opacity-50"

@@ -10,6 +10,7 @@ import {
   IconSparkles
 } from "@tabler/icons-react"
 import { FC } from "react"
+import { useTranslation } from "react-i18next"
 import { TabsList } from "../ui/tabs"
 import { WithTooltip } from "../ui/with-tooltip"
 import { ProfileSettings } from "../utility/profile-settings"
@@ -24,6 +25,7 @@ interface SidebarSwitcherProps {
 export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
   onContentTypeChange
 }) => {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col justify-between border-r-2 pb-5">
       <TabsList className="bg-background grid h-[440px] grid-rows-7">
@@ -84,7 +86,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
         {/* <Alerts /> */}
 
         <WithTooltip
-          display={<div>Profile Settings</div>}
+          display={<div>{t("sidebar.profileSettings")}</div>}
           trigger={<ProfileSettings />}
         />
       </div>
