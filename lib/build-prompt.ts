@@ -123,7 +123,7 @@ export async function buildFinalMessages(
   // Bilder anpassen
   finalMessages = finalMessages.map(message => {
     if (message.image_paths.length > 0) {
-      const imageParts = message.image_paths.map(path => {
+      const imageParts = message.image_paths.map((path: string) => {
         let formedUrl = path
         if (!path.startsWith("data")) {
           const chatImage = chatImages.find(img => img.path === path)
