@@ -3,9 +3,20 @@ import { ChatPayload, MessageImage } from "@/types"
 import { encode } from "gpt-tokenizer"
 import { getBase64FromDataURL, getMediaTypeFromDataURL } from "@/lib/utils"
 
-/**
- * Baut den Basis-Prompt zusammen (mit Preset, Profil, Workspace, Assistant)
- */
+interface TextPart {
+  type: "text"
+  text: string
+}
+
+interface ImagePart {
+  type: "image_url"
+  image_url: {
+    url: string
+  }
+}
+
+type MessageContentPart = TextPart | ImagePart
+
 const buildBasePrompt = (
   prompt: string,
   profileContext: string,
@@ -33,9 +44,6 @@ const buildBasePrompt = (
   return fullPrompt
 }
 
-/**
- * Baut die finalen Nachrichten für den API-Aufruf
- */
 export async function buildFinalMessages(
   payload: ChatPayload,
   profile: Tables<"profiles">,
@@ -62,21 +70,19 @@ export async function buildFinalMessages(
   let remainingTokens = CHUNK_SIZE - PROMPT_TOKENS
   let usedTokens = PROMPT_TOKENS
 
-  // Anhängen von Quellen, falls notwendig
   const processedChatMessages = chatMessages.map((chatMessage, index) => {
     const nextChatMessage = chatMessages[index + 1]
     if (!nextChatMessage) return chatMessage
 
-    const nextChatMessageFileItems = nextChatMessage.fileItems
-    if (nextChatMessageFileItems.length > 0) {
-      const findFileItems = nextChatMessageFileItems
+    const nextFileItems = nextChatMessage.fileItems
+    if (nextFileItems.length > 0) {
+      const findFileItems = nextFileItems
         .map(fileItemId =>
-          chatFileItems.find(chatFileItem => chatFileItem.id === fileItemId)
+          chatFileItems.find(f => f.id === fileItemId)
         )
-        .filter(item => item !== undefined) as Tables<"file_items">[]
+        .filter((item): item is Tables<"file_items"> => !!item)
 
       const retrievalText = buildRetrievalText(findFileItems)
-
       return {
         message: {
           ...chatMessage.message,
@@ -85,13 +91,11 @@ export async function buildFinalMessages(
         fileItems: []
       }
     }
-
     return chatMessage
   })
 
   let finalMessages: any[] = []
 
-  // Nachrichten von hinten auffüllen
   for (let i = processedChatMessages.length - 1; i >= 0; i--) {
     const message = processedChatMessages[i].message
     const messageTokens = encode(message.content).length
@@ -104,7 +108,6 @@ export async function buildFinalMessages(
     }
   }
 
-  // System-Prompt als erste Nachricht
   const systemMessage: Tables<"messages"> = {
     chat_id: "",
     assistant_id: null,
@@ -120,10 +123,9 @@ export async function buildFinalMessages(
   }
   finalMessages.unshift(systemMessage)
 
-  // Bilder anpassen
   finalMessages = finalMessages.map(message => {
     if (message.image_paths.length > 0) {
-      const imageParts = message.image_paths.map((path: string) => {
+      const imageParts: ImagePart[] = message.image_paths.map((path: string) => {
         let formedUrl = path
         if (!path.startsWith("data")) {
           const chatImage = chatImages.find(img => img.path === path)
@@ -148,13 +150,12 @@ export async function buildFinalMessages(
     }
   })
 
-  // Letzte Nachricht mit Quellen anreichern
   if (messageFileItems.length > 0) {
     const retrievalText = buildRetrievalText(messageFileItems)
     const last = finalMessages[finalMessages.length - 1]
     finalMessages[finalMessages.length - 1] = {
       ...last,
-      content: `${last.content}\n\n${retrievalText}`
+      content: `${typeof last.content === "string" ? last.content : last.content[0]?.text}\n\n${retrievalText}`
     }
   }
 
@@ -168,15 +169,12 @@ function buildRetrievalText(fileItems: Tables<"file_items">[]) {
   return `You may use the following sources if needed to answer the user's question. If you don't know the answer, say "I don't know."\n\n${retrievalText}`
 }
 
-/**
- * Google Gemini Adapter: Einzelnachricht
- */
-function adaptSingleMessageForGoogleGemini(message: any) {
-  const rawParts = Array.isArray(message.content)
+function adaptSingleMessageForGoogleGemini(message: { role: string, content: string | MessageContentPart[] }) {
+  const rawParts: MessageContentPart[] = Array.isArray(message.content)
     ? message.content
     : [{ type: "text", text: message.content }]
 
-  const parts = rawParts.map(part => {
+  const parts = rawParts.map((part) => {
     if (part.type === "text") {
       return { text: part.text }
     } else if (part.type === "image_url") {
@@ -191,13 +189,9 @@ function adaptSingleMessageForGoogleGemini(message: any) {
   }).filter(Boolean)
 
   const role = ["user", "system"].includes(message.role) ? "user" : "model"
-
   return { role, parts }
 }
 
-/**
- * Google Gemini Vision Adapter
- */
 function adaptMessagesForGeminiVision(messages: any[]) {
   const basePrompt = messages[0].parts[0].text
   const baseRole = messages[0].role
@@ -213,9 +207,6 @@ function adaptMessagesForGeminiVision(messages: any[]) {
   }]
 }
 
-/**
- * Gesamtadapter für Google Gemini
- */
 export async function adaptMessagesForGoogleGemini(
   payload: ChatPayload,
   messages: any[]
