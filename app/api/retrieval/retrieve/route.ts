@@ -2,7 +2,7 @@ import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
 import { Database } from "@/supabase/types"
 import { createClient } from "@supabase/supabase-js"
-import { requireConfig, getConfig } from "@/lib/config"
+import { getConfig } from "@/lib/config"
 import OpenAI from "openai"
 
 export async function POST(request: Request) {
@@ -17,10 +17,12 @@ export async function POST(request: Request) {
   const uniqueFileIds = [...new Set(fileIds)]
 
   try {
-    const supabaseAdmin = createClient<Database>(
-      await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-      await requireConfig("SUPABASE_SERVICE_ROLE_KEY")
-    )
+    const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+    const serviceRole = await getConfig("SUPABASE_SERVICE_ROLE_KEY")
+    if (!url || !serviceRole) {
+      throw new Error("Missing Supabase configuration")
+    }
+    const supabaseAdmin = createClient<Database>(url, serviceRole)
 
     const profile = await getServerProfile()
 

@@ -1,7 +1,7 @@
 import { Database } from "@/supabase/types"
 import { ChatSettings } from "@/types"
 import { createClient } from "@supabase/supabase-js"
-import { requireConfig, getConfig } from "@/lib/config"
+import { getConfig } from "@/lib/config"
 import { OpenAIStream, StreamingTextResponse } from "ai"
 import { ServerRuntime } from "next"
 import OpenAI from "openai"
@@ -18,10 +18,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabaseAdmin = createClient<Database>(
-      await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-      await requireConfig("SUPABASE_SERVICE_ROLE_KEY")
-    )
+    const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+    const serviceRole = await getConfig("SUPABASE_SERVICE_ROLE_KEY")
+    if (!url || !serviceRole) {
+      throw new Error("Missing Supabase configuration")
+    }
+    const supabaseAdmin = createClient<Database>(url, serviceRole)
 
     const { data: customModel, error } = await supabaseAdmin
       .from("models")

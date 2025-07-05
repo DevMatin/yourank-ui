@@ -1,6 +1,6 @@
 import { Database } from "@/supabase/types"
 import { createClient } from "@supabase/supabase-js"
-import { requireConfig } from "@/lib/config"
+import { getConfig } from "@/lib/config"
 
 export const runtime = "edge"
 
@@ -11,10 +11,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabaseAdmin = createClient<Database>(
-      await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-      await requireConfig("SUPABASE_SERVICE_ROLE_KEY")
-    )
+    const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+    const serviceRole = await getConfig("SUPABASE_SERVICE_ROLE_KEY")
+    if (!url || !serviceRole) {
+      throw new Error("Missing Supabase configuration")
+    }
+    const supabaseAdmin = createClient<Database>(url, serviceRole)
 
     const { data: usernames, error } = await supabaseAdmin
       .from("profiles")

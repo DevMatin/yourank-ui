@@ -5,7 +5,7 @@ import TranslationsProvider from "@/components/utility/translations-provider"
 import initTranslations from "@/lib/i18n"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
-import { requireConfig } from "@/lib/config"
+import { getConfig } from "@/lib/config"
 import { Metadata, Viewport } from "next"
 import { cookies } from "next/headers"
 import { ReactNode } from "react"
@@ -70,17 +70,18 @@ export default async function RootLayout({
   params: { locale }
 }: RootLayoutProps) {
   const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
-    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        }
+  const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+  const anonKey = await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase configuration")
+  }
+  const supabase = createServerClient<Database>(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
       }
     }
-  )
+  })
   const session = (await supabase.auth.getSession()).data.session
 
   const { t, resources } = await initTranslations(locale, i18nNamespaces)

@@ -1,8 +1,12 @@
 import { Database } from "@/supabase/types"
 import { createBrowserClient } from "@supabase/ssr"
-import { requireConfig } from "../config"
+import { getConfig } from "../config"
 
-export const supabase = createBrowserClient<Database>(
-  await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-  await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-)
+const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+const anonKey = await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
+if (!url || !anonKey) {
+  throw new Error("Missing Supabase configuration")
+}
+
+export const supabase = createBrowserClient<Database>(url, anonKey)

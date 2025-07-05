@@ -1,24 +1,25 @@
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { getConfig, requireConfig } from "../config"
+import { getConfig } from "../config"
 
 /**
  * Holt das aktuelle Server-User-Profil (mit Azure API-Daten aus ENV)
  */
 export async function getServerProfile() {
   const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
-    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        }
+  const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+  const anonKey = await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase configuration")
+  }
+  const supabase = createServerClient<Database>(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
       }
     }
-  )
+  })
 
   const { data } = await supabase.auth.getUser()
   const user = data.user

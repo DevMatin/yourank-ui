@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button"
 import { createClient } from "@/lib/supabase/server"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
-import { requireConfig, getConfig } from "@/lib/config"
+import { getConfig } from "@/lib/config"
 import { Metadata } from "next"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
@@ -20,17 +20,18 @@ export default async function Login({
   searchParams: { message: string }
 }) {
   const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
-    await requireConfig("NEXT_PUBLIC_SUPABASE_URL"),
-    await requireConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        }
+  const url = await getConfig("NEXT_PUBLIC_SUPABASE_URL")
+  const anonKey = await getConfig("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase configuration")
+  }
+  const supabase = createServerClient<Database>(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
       }
     }
-  )
+  })
   const session = (await supabase.auth.getSession()).data.session
 
   if (session) {
