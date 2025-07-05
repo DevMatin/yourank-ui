@@ -2,6 +2,7 @@ import { Tables } from "@/supabase/types"
 import { ChatPayload, MessageImage } from "@/types"
 import { encode } from "gpt-tokenizer"
 import { getBase64FromDataURL, getMediaTypeFromDataURL } from "@/lib/utils"
+import { chatPresets } from "@/lib/chatPresets"
 
 const buildBasePrompt = (
   prompt: string,
@@ -25,6 +26,7 @@ const buildBasePrompt = (
     fullPrompt += `System Instructions:\n${workspaceInstructions}\n\n`
   }
 
+  // Kombiniere dein Preset + User Prompt
   fullPrompt += `User Instructions:\n${prompt}`
 
   return fullPrompt
@@ -44,35 +46,29 @@ export async function buildFinalMessages(
     chatFileItems
   } = payload
 
+  // Hier dein Preset einbauen (z. B. SEO-Assistant)
+  const combinedPrompt = `${chatPresets.seoAssistant}\n\n${chatSettings.prompt}`
+
   const BUILT_PROMPT = buildBasePrompt(
-    chatSettings.prompt,
+    combinedPrompt,
     chatSettings.includeProfileContext ? profile.profile_context || "" : "",
     chatSettings.includeWorkspaceInstructions ? workspaceInstructions : "",
     assistant
   )
 
   const CHUNK_SIZE = chatSettings.contextLength
-  const PROMPT_TOKENS = encode(chatSettings.prompt).length
-
+  const PROMPT_TOKENS = encode(combinedPrompt).length
   let remainingTokens = CHUNK_SIZE - PROMPT_TOKENS
-
-  let usedTokens = 0
-  usedTokens += PROMPT_TOKENS
+  let usedTokens = PROMPT_TOKENS
 
   const processedChatMessages = chatMessages.map((chatMessage, index) => {
     const nextChatMessage = chatMessages[index + 1]
+    if (!nextChatMessage) return chatMessage
 
-    if (nextChatMessage === undefined) {
-      return chatMessage
-    }
-
-    const nextChatMessageFileItems = nextChatMessage.fileItems
-
-    if (nextChatMessageFileItems.length > 0) {
-      const findFileItems = nextChatMessageFileItems
-        .map(fileItemId =>
-          chatFileItems.find(chatFileItem => chatFileItem.id === fileItemId)
-        )
+    const nextFileItems = nextChatMessage.fileItems
+    if (nextFileItems.length > 0) {
+      const findFileItems = nextFileItems
+        .map(id => chatFileItems.find(item => item.id === id))
         .filter(item => item !== undefined) as Tables<"file_items">[]
 
       const retrievalText = buildRetrievalText(findFileItems)
@@ -80,13 +76,11 @@ export async function buildFinalMessages(
       return {
         message: {
           ...chatMessage.message,
-          content:
-            `${chatMessage.message.content}\n\n${retrievalText}` as string
+          content: `${chatMessage.message.content}\n\n${retrievalText}`
         },
         fileItems: []
       }
     }
-
     return chatMessage
   })
 
@@ -95,7 +89,6 @@ export async function buildFinalMessages(
   for (let i = processedChatMessages.length - 1; i >= 0; i--) {
     const message = processedChatMessages[i].message
     const messageTokens = encode(message.content).length
-
     if (messageTokens <= remainingTokens) {
       remainingTokens -= messageTokens
       usedTokens += messageTokens
@@ -123,52 +116,30 @@ export async function buildFinalMessages(
 
   finalMessages = finalMessages.map(message => {
     let content
-
     if (message.image_paths.length > 0) {
       content = [
-        {
-          type: "text",
-          text: message.content
-        },
+        { type: "text", text: message.content },
         ...message.image_paths.map(path => {
-          let formedUrl = ""
-
-          if (path.startsWith("data")) {
-            formedUrl = path
-          } else {
-            const chatImage = chatImages.find(image => image.path === path)
-
-            if (chatImage) {
-              formedUrl = chatImage.base64
-            }
+          let formedUrl = path
+          if (!path.startsWith("data")) {
+            const chatImage = chatImages.find(img => img.path === path)
+            if (chatImage) formedUrl = chatImage.base64
           }
-
-          return {
-            type: "image_url",
-            image_url: {
-              url: formedUrl
-            }
-          }
+          return { type: "image_url", image_url: { url: formedUrl } }
         })
       ]
     } else {
       content = message.content
     }
 
-    return {
-      role: message.role,
-      content
-    }
+    return { role: message.role, content }
   })
 
   if (messageFileItems.length > 0) {
     const retrievalText = buildRetrievalText(messageFileItems)
-
     finalMessages[finalMessages.length - 1] = {
       ...finalMessages[finalMessages.length - 1],
-      content: `${
-        finalMessages[finalMessages.length - 1].content
-      }\n\n${retrievalText}`
+      content: `${finalMessages[finalMessages.length - 1].content}\n\n${retrievalText}`
     }
   }
 
@@ -179,82 +150,5 @@ function buildRetrievalText(fileItems: Tables<"file_items">[]) {
   const retrievalText = fileItems
     .map(item => `<BEGIN SOURCE>\n${item.content}\n</END SOURCE>`)
     .join("\n\n")
-
   return `You may use the following sources if needed to answer the user's question. If you don't know the answer, say "I don't know."\n\n${retrievalText}`
 }
-
-function adaptSingleMessageForGoogleGemini(message: any) {
-
-  let adaptedParts = []
-
-  let rawParts = []
-  if(!Array.isArray(message.content)) {
-    rawParts.push({type: 'text', text: message.content})
-  } else {
-    rawParts = message.content
-  }
-
-  for(let i = 0; i < rawParts.length; i++) {
-    let rawPart = rawParts[i]
-
-    if(rawPart.type == 'text') {
-      adaptedParts.push({text: rawPart.text})
-    } else if(rawPart.type === 'image_url') {
-      adaptedParts.push({
-        inlineData: {
-          data: getBase64FromDataURL(rawPart.image_url.url),
-          mimeType: getMediaTypeFromDataURL(rawPart.image_url.url),
-        }
-      })
-    }
-  }
-
-  let role = 'user'
-  if(["user", "system"].includes(message.role)) {
-    role = 'user'
-  } else if(message.role === 'assistant') {
-    role = 'model'
-  }
-
-  return {
-    role: role,
-    parts: adaptedParts
-  }
-}
-
-function adaptMessagesForGeminiVision(
-  messages: any[]
-) {
-  // Gemini Pro Vision cannot process multiple messages
-  // Reformat, using all texts and last visual only
-
-  const basePrompt = messages[0].parts[0].text
-  const baseRole = messages[0].role
-  const lastMessage = messages[messages.length-1]
-  const visualMessageParts = lastMessage.parts;
-  let visualQueryMessages = [{
-    role: "user",
-    parts: [
-      `${baseRole}:\n${basePrompt}\n\nuser:\n${visualMessageParts[0].text}\n\n`,
-      visualMessageParts.slice(1)
-    ]
-  }]
-  return visualQueryMessages
-}
-
-export async function adaptMessagesForGoogleGemini(
-  payload: ChatPayload,
-  messages:  any[]
-) {
-  let geminiMessages = []
-  for (let i = 0; i < messages.length; i++) {
-    let adaptedMessage = adaptSingleMessageForGoogleGemini(messages[i])
-    geminiMessages.push(adaptedMessage)
-  }
-
-  if(payload.chatSettings.model === "gemini-pro-vision") {
-    geminiMessages = adaptMessagesForGeminiVision(geminiMessages)
-  }
-  return geminiMessages
-}
-
