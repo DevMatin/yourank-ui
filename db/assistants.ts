@@ -1,6 +1,23 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesInsert, TablesUpdate } from "@/supabase/types"
 
+// NEU: DIE ZUKÜNFTIGE HAUPTFUNKTION!
+export const getAssistantsForWorkspaceAndUser = async (
+  workspaceId: string,
+  userId: string
+) => {
+  const { data: assistantWorkspaces, error } = await supabase
+    .from("assistant_workspaces")
+    .select("assistant:assistants(*)")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+
+  if (error) throw new Error(error.message)
+
+  return (assistantWorkspaces || []).map(a => a.assistant)
+}
+
+// EINZELNEN ASSISTENTEN LADEN
 export const getAssistantById = async (assistantId: string) => {
   const { data: assistant, error } = await supabase
     .from("assistants")
@@ -9,34 +26,13 @@ export const getAssistantById = async (assistantId: string) => {
     .single()
 
   if (!assistant) {
-    throw new Error(error.message)
+    throw new Error(error?.message)
   }
 
   return assistant
 }
 
-export const getAssistantWorkspacesByWorkspaceId = async (
-  workspaceId: string
-) => {
-  const { data: workspace, error } = await supabase
-    .from("workspaces")
-    .select(
-      `
-      id,
-      name,
-      assistants (*)
-    `
-    )
-    .eq("id", workspaceId)
-    .single()
-
-  if (!workspace) {
-    throw new Error(error.message)
-  }
-
-  return workspace
-}
-
+// WORKSPACES ZU EINEM ASSISTANT (reverse)
 export const getAssistantWorkspacesByAssistantId = async (
   assistantId: string
 ) => {
@@ -59,6 +55,7 @@ export const getAssistantWorkspacesByAssistantId = async (
   return assistant
 }
 
+// ASSISTANT ANLEGEN & ZUORDNEN
 export const createAssistant = async (
   assistant: TablesInsert<"assistants">,
   workspace_id: string
@@ -106,6 +103,7 @@ export const createAssistants = async (
   return createdAssistants
 }
 
+// ZUWEISUNG ASSISTANT-WORKSPACE (MAPPING)
 export const createAssistantWorkspace = async (item: {
   user_id: string
   assistant_id: string
@@ -137,6 +135,7 @@ export const createAssistantWorkspaces = async (
   return createdAssistantWorkspaces
 }
 
+// UPDATE & DELETE
 export const updateAssistant = async (
   assistantId: string,
   assistant: TablesUpdate<"assistants">
