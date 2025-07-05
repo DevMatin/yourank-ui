@@ -1,5 +1,4 @@
 {
-  "Ask anything. Type \"/\" for prompts, \"@\" for files, and \"#\" for tools.": "Ask anything. Type \"/\" for prompts, \"@\" for files, and \"#\" for tools.",
   "login.emailLabel": "Email",
   "login.emailPlaceholder": "you@example.com",
   "login.passwordLabel": "Password",

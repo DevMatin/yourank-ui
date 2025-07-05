@@ -1,4 +1,12 @@
 {
   "Ask anything. Type \"/\" for prompts, \"@\" for files, and \"#\" for tools.": "Ask anything. Type \"/\" for prompts, \"@\" for files, and \"#\" for tools.",
-  "Quick Settings": "Quick Settings"
+  "Quick Settings": "Quick Settings",
+  "login.emailLabel": "E-Mail",
+  "login.emailPlaceholder": "du@beispiel.de",
+  "login.passwordLabel": "Passwort",
+  "login.passwordPlaceholder": "••••••••",
+  "login.signIn": "Anmelden",
+  "login.register": "Registrieren",
+  "login.forgotPassword": "Passwort vergessen?",
+  "login.reset": "Zurücksetzen"
 }

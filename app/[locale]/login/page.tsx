@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/ui/submit-button"
 import { createClient } from "@/lib/supabase/server"
 import { Database } from "@/supabase/types"
+import initTranslations from "@/lib/i18n"
 import { createServerClient } from "@supabase/ssr"
 import { get } from "@vercel/edge-config"
 import { Metadata } from "next"
@@ -15,10 +16,13 @@ export const metadata: Metadata = {
 }
 
 export default async function Login({
-  searchParams
+  searchParams,
+  params: { locale }
 }: {
   searchParams: { message: string }
+  params: { locale: string }
 }) {
+  const { t } = await initTranslations(locale, ["translation"])
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -170,43 +174,43 @@ export default async function Login({
         <Brand />
 
         <Label className="text-md mt-4" htmlFor="email">
-          E-Mail
+          {t("login.emailLabel")}
         </Label>
         <Input
           className="mb-3 rounded-md border bg-inherit px-4 py-2"
           name="email"
-          placeholder="du@beispiel.de"
+          placeholder={t("login.emailPlaceholder")}
           required
         />
 
         <Label className="text-md" htmlFor="password">
-          Passwort
+          {t("login.passwordLabel")}
         </Label>
         <Input
           className="mb-6 rounded-md border bg-inherit px-4 py-2"
           type="password"
           name="password"
-          placeholder="••••••••"
+          placeholder={t("login.passwordPlaceholder")}
         />
 
         <SubmitButton className="mb-2 rounded-md bg-brandbutton dark:bg-brandbutton hover:opacity-80 px-4 py-2 text-black dark:text-white">
-          Anmelden
+          {t("login.signIn")}
         </SubmitButton>
 
         <SubmitButton
           formAction={signUp}
           className="border-foreground/20 mb-2 rounded-md border px-4 py-2"
         >
-          Registrieren
+          {t("login.register")}
         </SubmitButton>
 
         <div className="text-muted-foreground mt-1 flex justify-center text-sm">
-          <span className="mr-1">Passwort vergessen?</span>
+          <span className="mr-1">{t("login.forgotPassword")}</span>
           <button
             formAction={handleResetPassword}
             className="text-primary ml-1 underline hover:opacity-80"
           >
-            Zurücksetzen
+            {t("login.reset")}
           </button>
         </div>
 
