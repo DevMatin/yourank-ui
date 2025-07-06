@@ -31,10 +31,13 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   manifest: "/manifest.json",
   appleWebApp: {
-    capable: true,
+    capable: false,
     statusBarStyle: "black",
     title: APP_DEFAULT_TITLE
     // startUpImage: [],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false
