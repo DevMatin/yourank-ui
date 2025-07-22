@@ -73,7 +73,7 @@ export const usePromptAndCommand = () => {
   const handleSelectUserFile = async (file: Tables<"files">) => {
     setShowFilesDisplay(true)
     setIsFilePickerOpen(false)
-    setUseRetrieval(true)
+    setUseRetrieval(false)
 
     setNewMessageFiles(prev => {
       const fileAlreadySelected =
@@ -102,7 +102,7 @@ export const usePromptAndCommand = () => {
   ) => {
     setShowFilesDisplay(true)
     setIsFilePickerOpen(false)
-    setUseRetrieval(true)
+    setUseRetrieval(false)
 
     const collectionFiles = await getCollectionFilesByCollectionId(
       collection.id

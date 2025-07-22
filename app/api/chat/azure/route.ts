@@ -7,26 +7,6 @@ import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completion
 export const runtime = "edge"
 
 export async function POST(request: Request) {
-  await request.json()
-
-  const dummyText = "👋 This is a dummy response (Azure OpenAI bypassed)."
-  const encoder = new TextEncoder()
-
-  const stream = new ReadableStream({
-    start(controller) {
-      // Send one SSE‐style chunk, then close
-      controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({
-            choices: [{ delta: { content: dummyText }, finish_reason: "stop" }]
-          })}\n\n`
-        )
-      )
-      controller.close()
-    }
-  })
-
-  return new StreamingTextResponse(stream)
   const json = await request.json()
   const { chatSettings, messages } = json as ChatAPIPayload
 

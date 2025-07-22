@@ -111,7 +111,9 @@ export const ChatInput: FC<ChatInputProps> = () => {
         // If no chatId, create a new chat and update store
         if (!chatId) {
           if (!profile || !selectedWorkspace || !selectedAssistant) {
-            toast.error("Profile, workspace, or assistant missing.")
+            toast.error(
+              "Please ensure your profile, workspace, and assistant are properly configured."
+            )
             setIsBrowsingLoading(false)
             return
           }
