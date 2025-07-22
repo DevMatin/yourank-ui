@@ -49,7 +49,10 @@ export async function getServerProfile() {
 /**
  * Prüft, ob ein API-Key vorhanden ist
  */
-export function checkApiKey(apiKey: string | null | undefined, keyName: string) {
+export function checkApiKey(
+  apiKey: string | null | undefined,
+  keyName: string
+) {
   if (!apiKey) {
     throw new Error(`${keyName} API Key not found`)
   }

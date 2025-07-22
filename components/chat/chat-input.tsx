@@ -1,60 +1,51 @@
+import React, { FC, useContext, useEffect, useRef, useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import rehypeRaw from "rehype-raw"
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import { cn } from "@/lib/utils"
 import {
-  IconBolt,
   IconCirclePlus,
   IconPlayerStopFilled,
   IconSend
 } from "@tabler/icons-react"
-import Image from "next/image"
-import { FC, useContext, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Input } from "../ui/input"
 import { TextareaAutosize } from "../ui/textarea-autosize"
-import { ChatCommandInput } from "./chat-command-input"
 import { ChatFilesDisplay } from "./chat-files-display"
 import { useChatHandler } from "./chat-hooks/use-chat-handler"
 import { useChatHistoryHandler } from "./chat-hooks/use-chat-history"
 import { usePromptAndCommand } from "./chat-hooks/use-prompt-and-command"
 import { useSelectFileHandler } from "./chat-hooks/use-select-file-handler"
+import { handleCreateChat } from "./chat-helpers"
+import { createMessages } from "@/db/messages"
 
 interface ChatInputProps {}
 
-export const ChatInput: FC<ChatInputProps> = ({}) => {
+export const ChatInput: FC<ChatInputProps> = () => {
   const { t } = useTranslation()
+  useHotkey("l", () => handleFocusChatInput())
 
-  useHotkey("l", () => {
-    handleFocusChatInput()
-  })
-
-  const [isTyping, setIsTyping] = useState<boolean>(false)
+  const [browsingMode, setBrowsingMode] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isBrowsingLoading, setIsBrowsingLoading] = useState(false)
 
   const {
-    isAssistantPickerOpen,
-    focusAssistant,
-    setFocusAssistant,
     userInput,
     chatMessages,
     isGenerating,
-    selectedPreset,
-    selectedAssistant,
-    focusPrompt,
-    setFocusPrompt,
-    focusFile,
-    focusTool,
-    setFocusTool,
-    isToolPickerOpen,
-    isPromptPickerOpen,
-    setIsPromptPickerOpen,
-    isFilePickerOpen,
-    setFocusFile,
     chatSettings,
-    selectedTools,
-    setSelectedTools,
-    assistantImages
+    selectedAssistant,
+    setUserInput,
+    setChatMessages,
+    profile,
+    selectedWorkspace,
+    setSelectedChat,
+    setChats,
+    setChatFiles
   } = useContext(ChatbotUIContext)
 
   const {
@@ -65,9 +56,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   } = useChatHandler()
 
   const { handleInputChange } = usePromptAndCommand()
-
   const { filesToAccept, handleSelectDeviceFile } = useSelectFileHandler()
-
   const {
     setNewMessageContentToNextUserMessage,
     setNewMessageContentToPreviousUserMessage
@@ -76,194 +65,269 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setTimeout(() => {
-      handleFocusChatInput()
-    }, 200) // FIX: hacky
-  }, [selectedPreset, selectedAssistant])
+    setTimeout(handleFocusChatInput, 200)
+  }, [selectedAssistant])
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (!isTyping && event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault()
-      setIsPromptPickerOpen(false)
-      handleSendMessage(userInput, chatMessages, false)
-    }
-
-    if (
-      isPromptPickerOpen ||
-      isFilePickerOpen ||
-      isToolPickerOpen ||
-      isAssistantPickerOpen
-    ) {
-      if (
-        event.key === "Tab" ||
-        event.key === "ArrowUp" ||
-        event.key === "ArrowDown"
-      ) {
-        event.preventDefault()
-        if (isPromptPickerOpen) setFocusPrompt(!focusPrompt)
-        if (isFilePickerOpen) setFocusFile(!focusFile)
-        if (isToolPickerOpen) setFocusTool(!focusTool)
-        if (isAssistantPickerOpen) setFocusAssistant(!focusAssistant)
+  const getSearchResults = async (query: string) => {
+    setIsSearching(true)
+    try {
+      const res = await fetch(`/api/serpapi?q=${encodeURIComponent(query)}`)
+      if (!res.ok) throw new Error("Search failed")
+      const data = await res.json()
+      return {
+        news: (data.news_results || [])
+          .slice(0, 3)
+          .map((r: any) => ({ ...r, type: "news" })),
+        images: (data.images_results || [])
+          .slice(0, 5)
+          .map((i: any) => ({ ...i, type: "image" })),
+        videos: (data.inline_videos || [])
+          .slice(0, 3)
+          .map((v: any) => ({ ...v, type: "video" })),
+        organic: (data.organic_results || [])
+          .slice(0, 5)
+          .map((o: any) => ({ ...o, type: "organic" }))
       }
-    }
-
-    if (event.key === "ArrowUp" && event.shiftKey && event.ctrlKey) {
-      event.preventDefault()
-      setNewMessageContentToPreviousUserMessage()
-    }
-
-    if (event.key === "ArrowDown" && event.shiftKey && event.ctrlKey) {
-      event.preventDefault()
-      setNewMessageContentToNextUserMessage()
-    }
-
-    if (
-      isAssistantPickerOpen &&
-      (event.key === "Tab" ||
-        event.key === "ArrowUp" ||
-        event.key === "ArrowDown")
-    ) {
-      event.preventDefault()
-      setFocusAssistant(!focusAssistant)
+    } finally {
+      setIsSearching(false)
     }
   }
 
-  const handlePaste = (event: React.ClipboardEvent) => {
-    const imagesAllowed = LLM_LIST.find(
-      llm => llm.modelId === chatSettings?.model
-    )?.imageInput
+  const handleSend = async () => {
+    if (!userInput?.trim()) return
 
-    const items = event.clipboardData.items
-    for (const item of items) {
-      if (item.type.indexOf("image") === 0) {
-        if (!imagesAllowed) {
-          toast.error(
-            t(
-              "Bilder werden von diesem Modell nicht unterstützt. Bitte verwende z.B. GPT-4 Vision."
-            )
+    if (browsingMode) {
+      setIsBrowsingLoading(true)
+      try {
+        // Defensive: ensure chatSettings is not null
+        if (!chatSettings) {
+          toast.error("Chat settings missing.")
+          setIsBrowsingLoading(false)
+          return
+        }
+        const now = new Date().toISOString()
+        let chatId = chatMessages[0]?.message.chat_id || ""
+        let userId = chatMessages[0]?.message.user_id || ""
+        // If no chatId, create a new chat and update store
+        if (!chatId) {
+          if (!profile || !selectedWorkspace || !selectedAssistant) {
+            toast.error("Profile, workspace, or assistant missing.")
+            setIsBrowsingLoading(false)
+            return
+          }
+          const createdChat = await handleCreateChat(
+            chatSettings,
+            profile,
+            selectedWorkspace,
+            userInput,
+            selectedAssistant,
+            [],
+            setSelectedChat,
+            setChats,
+            setChatFiles
+          )
+          chatId = createdChat.id
+          userId = profile.user_id
+        }
+        const base = {
+          model: chatSettings.model,
+          assistant_id: selectedAssistant?.id || null,
+          chat_id: chatId,
+          user_id: userId,
+          image_paths: [] as string[]
+        }
+        // Insert user message immediately
+        const userMsg = {
+          message: {
+            ...base,
+            id: `${Date.now()}-user`,
+            role: "user",
+            content: userInput,
+            created_at: now,
+            updated_at: now,
+            sequence_number: chatMessages.length
+          },
+          fileItems: []
+        }
+        // Insert placeholder assistant message immediately
+        const placeholderId = `${Date.now()}-assistant-placeholder`
+        const assistantMsg = {
+          message: {
+            ...base,
+            id: placeholderId,
+            role: "assistant",
+            content: "GPT Turbo is thinking...\n",
+            created_at: now,
+            updated_at: now,
+            sequence_number: chatMessages.length + 1
+          },
+          fileItems: []
+        }
+        setChatMessages([...chatMessages, userMsg, assistantMsg])
+        setUserInput("")
+
+        // Now do the web search and update the placeholder
+        const { news, images, videos, organic } =
+          await getSearchResults(userInput)
+        const combined = [...news, ...videos, ...images, ...organic].slice(0, 8)
+        if (!combined.length) {
+          toast.error("No search results found.")
+          // Remove the placeholder assistant message
+          setChatMessages(msgs =>
+            msgs.filter(m => m.message.id !== placeholderId)
           )
           return
         }
-        const file = item.getAsFile()
-        if (!file) return
-        handleSelectDeviceFile(file)
+        const res = await fetch("/api/chat/web-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: userInput,
+            search_results: combined,
+            chatSettings,
+            messages: [] // don't send previous messages for web search
+          })
+        })
+        if (!res.ok) throw new Error("Web-search API failed")
+        const { message } = await res.json()
+        // Update the placeholder assistant message with the real response
+        setChatMessages(msgs =>
+          msgs.map(m =>
+            m.message.id === placeholderId
+              ? { ...m, message: { ...m.message, content: message } }
+              : m
+          )
+        )
+        // Persist both user and assistant messages to the database
+        try {
+          const userDbMsg = {
+            chat_id: chatId,
+            assistant_id: null,
+            user_id: userId,
+            content: userInput,
+            model: chatSettings.model,
+            role: "user",
+            sequence_number: chatMessages.length,
+            image_paths: [],
+            created_at: now,
+            updated_at: now
+          }
+          const assistantDbMsg = {
+            chat_id: chatId,
+            assistant_id: selectedAssistant?.id || null,
+            user_id: userId,
+            content: message,
+            model: chatSettings.model,
+            role: "assistant",
+            sequence_number: chatMessages.length + 1,
+            image_paths: [],
+            created_at: now,
+            updated_at: now
+          }
+          await createMessages([userDbMsg, assistantDbMsg])
+        } catch (err) {
+          console.error("Failed to persist browsing mode messages:", err)
+        }
+      } catch (e) {
+        console.error(e)
+        toast.error("Web search failed.")
+        // Optionally update the placeholder with error
+        setChatMessages(msgs =>
+          msgs.map(m =>
+            m.message.content === "GPT Turbo is thinking...\n"
+              ? {
+                  ...m,
+                  message: { ...m.message, content: "Web search failed." }
+                }
+              : m
+          )
+        )
+      } finally {
+        setIsBrowsingLoading(false)
       }
+      return
     }
+
+    await handleSendMessage(userInput, chatMessages, false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && !isGenerating) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const allowed = chatSettings
+      ? LLM_LIST.find(l => l.modelId === chatSettings.model)?.imageInput
+      : false
+    Array.from(e.clipboardData.items).forEach(item => {
+      if (item.type.startsWith("image") && allowed) {
+        const file = item.getAsFile()
+        file && handleSelectDeviceFile(file)
+      }
+    })
   }
 
   return (
     <>
-      <div className="flex flex-col flex-wrap justify-center gap-2">
-        <ChatFilesDisplay />
-
-        {selectedTools &&
-          selectedTools.map((tool, index) => (
-            <div
-              key={index}
-              className="flex justify-center"
-              onClick={() =>
-                setSelectedTools(
-                  selectedTools.filter(
-                    selectedTool => selectedTool.id !== tool.id
-                  )
-                )
-              }
-            >
-              <div className="flex cursor-pointer items-center justify-center space-x-1 rounded-lg bg-purple-600 px-3 py-1 hover:opacity-50">
-                <IconBolt size={20} />
-
-                <div>{tool.name}</div>
-              </div>
-            </div>
-          ))}
-
-        {selectedAssistant && (
-          <div className="border-primary mx-auto flex w-fit items-center space-x-2 rounded-lg border p-1.5">
-            {selectedAssistant.image_path && (
-              <Image
-                className="rounded"
-                src={
-                  assistantImages.find(
-                    img => img.path === selectedAssistant.image_path
-                  )?.base64
-                }
-                width={28}
-                height={28}
-                alt={selectedAssistant.name}
-              />
-            )}
-
-            <div className="text-sm font-bold">
-              {t("Spricht mit")} {selectedAssistant.name}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="border-input relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-xl border-2">
-        <div className="absolute bottom-[76px] left-0 max-h-[300px] w-full overflow-auto rounded-xl dark:border-none">
-          <ChatCommandInput />
-        </div>
-
-        <>
-          <IconCirclePlus
-            className="absolute bottom-[12px] left-3 cursor-pointer p-1 hover:opacity-50"
-            size={32}
-            onClick={() => fileInputRef.current?.click()}
-          />
-
-          {/* Hidden input to select files from device */}
-          <Input
-            ref={fileInputRef}
-            className="hidden"
-            type="file"
-            onChange={e => {
-              if (!e.target.files) return
-              handleSelectDeviceFile(e.target.files[0])
-            }}
-            accept={filesToAccept}
-          />
-        </>
-
+      <div className="border-input relative mt-3 flex w-full flex-col rounded-xl border-2 bg-white dark:bg-black">
         <TextareaAutosize
           textareaRef={chatInputRef}
-          className="ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring text-md flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder={t(
-            // Original: Ask anything. Type @  /  #  !
-            'Wie kann ich dir heute helfen?'
-          )}
+          className="w-full resize-none bg-transparent px-4 py-2 focus:outline-none"
+          placeholder={t("How can I help you today?")}
           onValueChange={handleInputChange}
           value={userInput}
           minRows={1}
-          maxRows={18}
+          maxRows={10}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          onCompositionStart={() => setIsTyping(true)}
-          onCompositionEnd={() => setIsTyping(false)}
         />
-
-        <div className="absolute bottom-[14px] right-3 cursor-pointer hover:opacity-50">
-          {isGenerating ? (
-            <IconPlayerStopFilled
-              className="hover:bg-background animate-pulse rounded bg-transparent p-1"
-              onClick={handleStopMessage}
-              size={30}
+        <div className="flex items-center justify-between px-3 pb-2 pt-1">
+          <div className="flex items-center space-x-2">
+            <IconCirclePlus
+              size={24}
+              className="cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
             />
-          ) : (
-            <IconSend
-              className={cn(
-                "bg-primary text-secondary rounded p-1",
-                !userInput && "cursor-not-allowed opacity-50"
-              )}
-              onClick={() => {
-                if (!userInput) return
-
-                handleSendMessage(userInput, chatMessages, false)
-              }}
-              size={30}
-            />
-          )}
+            <label className="flex items-center space-x-1">
+              <input
+                type="checkbox"
+                checked={browsingMode}
+                onChange={() => setBrowsingMode(!browsingMode)}
+              />
+              <span className="text-sm">Browsing Mode</span>
+            </label>
+          </div>
+          <div>
+            {isGenerating ? (
+              <IconPlayerStopFilled
+                size={24}
+                onClick={handleStopMessage}
+                className="cursor-pointer"
+              />
+            ) : (
+              <IconSend
+                size={24}
+                className={cn(
+                  "cursor-pointer",
+                  !userInput && "cursor-not-allowed opacity-50"
+                )}
+                onClick={handleSend}
+              />
+            )}
+          </div>
         </div>
+        <Input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={e =>
+            e.target.files && handleSelectDeviceFile(e.target.files[0])
+          }
+          accept={filesToAccept}
+        />
       </div>
     </>
   )
