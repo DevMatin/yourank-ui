@@ -49,29 +49,56 @@ export async function POST(req: Request) {
           }
         : null)
 
+    // --- Improved system prompt ---
+    const today = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    })
+
     // --- Build rich tool message ---
     let toolContent = ""
-    if (heroImage)
-      toolContent += `[![${heroImage.title || "Image"}](${heroImage.image})](${heroImage.link})\n\n`
-    if (images.length > 1)
+
+    // Add a quick summary
+    toolContent +=
+      `### Quick Summary\n\n` +
+      `Here are the top stories and updates as of **${today}**.\n\n`
+
+    // Add hero image as a banner if available
+    if (heroImage) {
+      toolContent += `### 🌟 Featured Image\n\n[![${heroImage.title || "Image"}](${heroImage.image})](${heroImage.link})\n\n`
+    }
+
+    // Add image gallery as a horizontal banner
+    if (images.length > 1) {
       toolContent +=
+        `### 🖼️ Image Gallery\n\n` +
         images
           .slice(0, 4)
           .map((img: any) => `![${img.title || "Image"}](${img.image})`)
-          .join(" ") + "\n\n"
-    if (news.length)
+          .join(" ") +
+        "\n\n"
+    }
+
+    // Add latest news with structured formatting
+    if (news.length) {
       toolContent +=
-        `### 📰 Latest News\n` +
+        `### 📰 Latest News\n\n` +
         news
           .map(
-            (n: any, i: number) =>
-              `* **${n.title}** (${n.date})\n  ${n.snippet}\n  [Source](${n.link})`
+            (n: any) =>
+              `* **${n.title}** (${n.date || "Unknown Date"})\n  ${n.snippet}\n  [Source](${n.link})`
           )
           .join("\n") +
         "\n\n"
-    if (videos.length)
+    } else {
+      toolContent += `No specific news articles were found in the search results.\n\n`
+    }
+
+    // Add videos as a structured list with titles and links
+    if (videos.length) {
       toolContent +=
-        `### 🎬 Videos\n` +
+        `### 🎬 Videos\n\n` +
         videos
           .map(
             (v: any) =>
@@ -79,23 +106,35 @@ export async function POST(req: Request) {
           )
           .join("\n") +
         "\n\n"
-    if (organic.length)
+    } else {
+      toolContent += `No videos were found in the search results.\n\n`
+    }
+
+    // Add organic web results with snippets and links
+    if (organic.length) {
       toolContent +=
-        `### 🌐 Web Results\n` +
+        `### 🌐 Web Results\n\n` +
         organic
           .map(
             (o: any) =>
               `* **${o.title}**\n  ${o.snippet}\n  [Source](${o.link})`
           )
           .join("\n") +
-        "\n"
+        "\n\n"
+    } else {
+      toolContent += `No additional web results were found.\n\n`
+    }
 
-    // --- Improved system prompt ---
-    const today = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    })
+    // Add sources in a collapsible section for better readability
+    if (allSources.length) {
+      toolContent +=
+        `<details>\n<summary><strong>Sources</strong></summary>\n\n` +
+        allSources
+          .map((src: any, i: number) => `[${i + 1}] ${src}`)
+          .join("  \n") +
+        "\n\n</details>\n"
+    }
+
     const systemMsg = {
       role: "system",
       content: `
@@ -158,7 +197,6 @@ Germany is a central European country known for its history, industry, and cultu
 If there are no results in a section, omit that section. Always respond as if you are ChatGPT Bing browsing mode.
       `.replace(/^\s+/gm, "") // remove leading indentation
     }
-
     const toolMsg = {
       role: "assistant",
       name: "web_search_tool",

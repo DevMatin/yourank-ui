@@ -51,7 +51,7 @@ export const useSelectFileHandler = () => {
     if (!profile || !selectedWorkspace || !chatSettings) return
 
     setShowFilesDisplay(true)
-    setUseRetrieval(true)
+    setUseRetrieval(false)
 
     if (file) {
       let simplifiedFileType = file.type.split("/")[1]

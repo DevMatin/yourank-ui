@@ -133,7 +133,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       }))
     )
 
-    setUseRetrieval(true)
+    // Ensure retrieval mode is only enabled explicitly by the user
+    setUseRetrieval(false)
     setShowFilesDisplay(true)
 
     const fetchedChatMessages = fetchedMessages.map(message => {
