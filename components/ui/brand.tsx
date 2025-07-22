@@ -23,7 +23,7 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
           height={0}
           style={{ height: "auto", width: "100%", maxWidth: "500px" }}
           draggable={false}
-          onContextMenu={(e) => e.preventDefault()}
+          onContextMenu={e => e.preventDefault()}
         />
       </div>
     </div>

@@ -74,7 +74,8 @@ export default async function Login({
 
     if (!homeWorkspace) {
       throw new Error(
-        homeWorkspaceError?.message || "Ein unerwarteter Fehler ist aufgetreten."
+        homeWorkspaceError?.message ||
+          "Ein unerwarteter Fehler ist aufgetreten."
       )
     }
 
@@ -158,7 +159,9 @@ export default async function Login({
       return redirect(`/login?message=${error.message}`)
     }
 
-    return redirect("/login?message=Bitte prüfe deine E-Mails, um das Passwort zurückzusetzen.")
+    return redirect(
+      "/login?message=Bitte prüfe deine E-Mails, um das Passwort zurückzusetzen."
+    )
   }
 
   return (
@@ -189,7 +192,7 @@ export default async function Login({
           placeholder="••••••••"
         />
 
-        <SubmitButton className="mb-2 rounded-md bg-brandbutton dark:bg-brandbutton hover:opacity-80 px-4 py-2 text-black dark:text-white">
+        <SubmitButton className="bg-brandbutton dark:bg-brandbutton mb-2 rounded-md px-4 py-2 text-black hover:opacity-80 dark:text-white">
           Anmelden
         </SubmitButton>
 

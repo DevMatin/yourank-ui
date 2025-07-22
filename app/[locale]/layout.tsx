@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     // startUpImage: [],
   },
   other: {
-    "mobile-web-app-capable": "yes",
+    "mobile-web-app-capable": "yes"
   },
   formatDetection: {
     telephone: false
