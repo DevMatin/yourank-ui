@@ -23,4 +23,3 @@ export async function GET(request: NextRequest) {
   const info = await res.json()
   return NextResponse.json({ ok: true, info }, { status: 200 })
 }
-z
