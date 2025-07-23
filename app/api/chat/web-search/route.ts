@@ -1,232 +1,236 @@
-import { getServerProfile, checkApiKey } from "@/lib/server/server-chat-helpers"
+// app/api/web-search/route.ts
+
+import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
+
+import { supabaseServiceRole } from "@/lib/supabase/service-role"
 
 export const runtime = "edge"
 
-export async function POST(req: Request) {
+// env vars
+const DF_LOGIN = process.env.NEXT_PUBLIC_DATAFORSEO_LOGIN!
+const DF_PASSWORD = process.env.NEXT_PUBLIC_DATAFORSEO_PASSWORD!
+const AZURE_KEY = process.env.AZURE_OPENAI_KEY!
+const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT!
+const AZURE_DEPLOYMENT = process.env.AZURE_GPT_45_TURBO_NAME!
+
+async function checkConnection(): Promise<boolean> {
+  const auth = Buffer.from(`${DF_LOGIN}:${DF_PASSWORD}`).toString("base64")
   try {
-    const body = await req.json()
-    const { query, search_results, chatSettings, messages } = body
-
-    // --- Validate Azure credentials ---
-    const profile = await getServerProfile()
-    checkApiKey(profile.azure_openai_api_key, "Azure OpenAI")
-    const ENDPOINT = profile.azure_openai_endpoint
-    const KEY = profile.azure_openai_api_key
-    const DEPLOYMENT =
-      profile.azure_openai_45_turbo_id || profile.azure_openai_35_turbo_id
-    if (!ENDPOINT || !KEY || !DEPLOYMENT) {
-      return new Response(
-        JSON.stringify({ error: "Azure configuration error" }),
-        { status: 500 }
-      )
-    }
-
-    // --- Organize search results ---
-    const news = (search_results || []).filter((r: any) => r.type === "news")
-    const images = (search_results || []).filter((r: any) => r.type === "image")
-    const videos = (search_results || []).filter((r: any) => r.type === "video")
-    const organic = (search_results || []).filter(
-      (r: any) => r.type === "organic"
-    )
-
-    // --- Build sources for the bottom ---
-    const allSources = [
-      ...news.map((n: any) => `[${n.title}](${n.link})`),
-      ...images.map((i: any) => `[${i.title || "Image"}](${i.link})`),
-      ...videos.map((v: any) => `[${v.title}](${v.link})`),
-      ...organic.map((o: any) => `[${o.title}](${o.link})`)
-    ]
-
-    // --- Find hero image (first image or organic with image) ---
-    let heroImage =
-      images[0] ||
-      (organic.find((o: any) => o.image)
-        ? {
-            image: organic.find((o: any) => o.image).image,
-            link: organic.find((o: any) => o.image).link,
-            title: organic.find((o: any) => o.image).title
-          }
-        : null)
-
-    // --- Improved system prompt ---
-    const today = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
+    const res = await fetch("https://api.dataforseo.com/v3/appendix/status", {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json"
+      }
     })
+    return res.ok
+  } catch {
+    return false
+  }
+}
 
-    // --- Build rich tool message ---
-    let toolContent = ""
+async function fetchSearchResults(query: string) {
+  const auth = Buffer.from(`${DF_LOGIN}:${DF_PASSWORD}`).toString("base64")
+  const body = [
+    { language_code: "en", location_name: "United States", keyword: query }
+  ]
 
-    // Add a quick summary
-    toolContent +=
-      `### Quick Summary\n\n` +
-      `Here are the top stories and updates as of **${today}**.\n\n`
-
-    // Add hero image as a banner if available
-    if (heroImage) {
-      toolContent += `### 🌟 Featured Image\n\n[![${heroImage.title || "Image"}](${heroImage.image})](${heroImage.link})\n\n`
+  const res = await fetch(
+    "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
     }
+  )
 
-    // Add image gallery as a horizontal banner
-    if (images.length > 1) {
-      toolContent +=
-        `### 🖼️ Image Gallery\n\n` +
-        images
-          .slice(0, 4)
-          .map((img: any) => `![${img.title || "Image"}](${img.image})`)
-          .join(" ") +
-        "\n\n"
-    }
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`DataForSEO error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
 
-    // Add latest news with structured formatting
-    if (news.length) {
-      toolContent +=
-        `### 📰 Latest News\n\n` +
-        news
-          .map(
-            (n: any) =>
-              `* **${n.title}** (${n.date || "Unknown Date"})\n  ${n.snippet}\n  [Source](${n.link})`
-          )
-          .join("\n") +
-        "\n\n"
-    } else {
-      toolContent += `No specific news articles were found in the search results.\n\n`
-    }
+export async function POST(req: NextRequest) {
+  // 1) check network
+  if (!(await checkConnection())) {
+    return NextResponse.json(
+      {
+        error: "🚫 I'm not connected to the internet. Please try again later."
+      },
+      { status: 503 }
+    )
+  }
 
-    // Add videos as a structured list with titles and links
-    if (videos.length) {
-      toolContent +=
-        `### 🎬 Videos\n\n` +
-        videos
-          .map(
-            (v: any) =>
-              `* [${v.title}](${v.link})${v.channel ? ` (${v.channel})` : ""}`
-          )
-          .join("\n") +
-        "\n\n"
-    } else {
-      toolContent += `No videos were found in the search results.\n\n`
-    }
+  // 2) parse body
+  const { query, chatSettings, messages } = await req.json()
+  if (!query) {
+    return NextResponse.json(
+      { error: "Missing `query` in request body" },
+      { status: 400 }
+    )
+  }
 
-    // Add organic web results with snippets and links
-    if (organic.length) {
-      toolContent +=
-        `### 🌐 Web Results\n\n` +
-        organic
-          .map(
-            (o: any) =>
-              `* **${o.title}**\n  ${o.snippet}\n  [Source](${o.link})`
-          )
-          .join("\n") +
-        "\n\n"
-    } else {
-      toolContent += `No additional web results were found.\n\n`
-    }
+  try {
+    // 3) fetch the SERP
+    const df = await fetchSearchResults(query)
+    const items = (df.tasks?.[0]?.result?.[0]?.items as any[]) || []
 
-    // Add sources in a collapsible section for better readability
-    if (allSources.length) {
-      toolContent +=
-        `<details>\n<summary><strong>Sources</strong></summary>\n\n` +
-        allSources
-          .map((src: any, i: number) => `[${i + 1}] ${src}`)
-          .join("  \n") +
-        "\n\n</details>\n"
-    }
+    // 4) normalize
+    const search_results = items.map(i => ({
+      type: i.type,
+      title: i.title,
+      link: i.url,
+      snippet: i.description,
+      image: i.images?.[0]?.url,
+      date: i.timestamp?.split(" ")[0],
+      channel: i.website_name
+    }))
 
-    const systemMsg = {
-      role: "system",
-      content: `
-You are a news assistant with access to the Google search engine. Please:
-
-- At the beginning, confirm whether you are connected to Google and have access to breaking news.
-- Search only on Google for today's most important stories (current date: ${today}).
-- Concisely present the key information for each story.
-- Then cite the exact sources.
-- Use a clear format with clear sections and references.
-
-You are to present a web search answer in the style of ChatGPT's browsing tool.
-
-- Start with a **brief summary** (2-4 lines) about the topic.
-- Then show a **Latest News** section (if available), listing headlines as bullet points with dates.
-- If there are images, show a **horizontal row of images** at the top using markdown image tags.
-- If there are videos, show a **Videos** section as a markdown bulleted list with titles and links.
-- After all, show a **Sources** section at the end, using a collapsible markdown details/summary section (if possible).
-- Use clear sections and modern markdown formatting. DO NOT use HTML except for details/summary if you want collapsible.
-- Always cite your sources as [number] and match to the sources list.
-
-Here is a template for you (adapt for content):
-
----
-**Germany: Quick Summary**
-
-Germany is a central European country known for its history, industry, and culture. It leads Europe in technology and exports and is famous for cities like Berlin and Munich, the Black Forest, and Oktoberfest.
-
----
-
-### Latest News
-- **[Headline 1]** (Date)  
-  Short summary. [Source][1]
-
-- **[Headline 2]** (Date)  
-  Short summary. [Source][2]
-
----
-
-### Image Gallery
-
-![Image1](url1) ![Image2](url2) ![Image3](url3)
-
----
-
-### Videos
-- [Video title 1](video_link1)
-- [Video title 2](video_link2)
-
----
-
-<details>
-<summary><strong>Sources</strong></summary>
-
-[1] [News Source 1](link1)  
-[2] [News Source 2](link2)  
-...  
-</details>
-
-If there are no results in a section, omit that section. Always respond as if you are ChatGPT Bing browsing mode.
-      `.replace(/^\s+/gm, "") // remove leading indentation
-    }
-    const toolMsg = {
-      role: "assistant",
-      name: "web_search_tool",
-      content: toolContent
-    }
-    const userMsg = {
-      role: "user",
-      content: `Using the above web search, answer the user's question with sections and sources as instructed.`
-    }
-
-    // --- Azure OpenAI call ---
-    const azure = new OpenAI({
-      apiKey: KEY,
-      baseURL: `${ENDPOINT}/openai/deployments/${DEPLOYMENT}`,
-      defaultHeaders: { "api-key": KEY },
+    // 5) build OpenAI client
+    const client = new OpenAI({
+      apiKey: AZURE_KEY,
+      baseURL: `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}`,
+      defaultHeaders: { "api-key": AZURE_KEY },
       defaultQuery: { "api-version": "2023-12-01-preview" }
     })
-    const chat = await azure.chat.completions.create({
-      model: DEPLOYMENT,
-      temperature: chatSettings?.temperature ?? 0,
-      messages: [systemMsg, toolMsg, userMsg, ...(messages || [])],
-      max_tokens: 1200
-    })
-    const answer = chat.choices[0]?.message?.content || ""
 
-    return new Response(JSON.stringify({ message: answer }), { status: 200 })
+    // 6) map incoming history into {role,content}
+    const history = Array.isArray(messages)
+      ? messages
+          .map((m: any) => {
+            // unwrap .message if present
+            const msg = m.message ?? m
+            return msg.role && msg.content
+              ? {
+                  role: msg.role as "user" | "assistant" | "system",
+                  content: msg.content
+                }
+              : null
+          })
+          .filter((m: any): m is { role: string; content: string } => !!m)
+      : []
+
+    // 7) assemble the chat‑completion messages
+    const systemMsg = {
+      role: "system" as const,
+      content: `You are ChatGPT, a helpful assistant. You have access to up-to-date web search results below. Use them to answer the user's question fully—choose whatever structure best fits the topic. Cite sources by number when relevant.`
+    }
+    const toolMsg = {
+      role: "assistant" as const,
+      name: "web_search_tool",
+      content: JSON.stringify(search_results, null, 2)
+    }
+    const userMsg = {
+      role: "user" as const,
+      content: `User asked: "${query}". Use the search results above to craft your reply.`
+    }
+
+    // 8) call Azure OpenAI
+    const resp = await client.chat.completions.create({
+      model: AZURE_DEPLOYMENT,
+      temperature: chatSettings?.temperature ?? 0,
+      max_tokens: 1200,
+      messages: [systemMsg, toolMsg, userMsg, ...history].filter(
+        (m): m is Exclude<typeof m, null> => m !== null
+      )
+    })
+
+    // --- Server-side persistence of user and assistant messages ---
+    // 1. Find chat_id, user_id, assistant_id, and sequence_number from messages/history
+    let chat_id = null,
+      user_id = null,
+      assistant_id = null
+    let lastSeq = 0
+    if (Array.isArray(messages) && messages.length > 0) {
+      // Try to get from last user message
+      const lastUserMsg =
+        messages[messages.length - 1].message || messages[messages.length - 1]
+      chat_id = lastUserMsg.chat_id || null
+      user_id = lastUserMsg.user_id || null
+      assistant_id = lastUserMsg.assistant_id || null
+      lastSeq =
+        typeof lastUserMsg.sequence_number === "number"
+          ? lastUserMsg.sequence_number
+          : messages.length - 1
+    }
+
+    // Log what will be inserted
+    console.log("[WebSearch API] Persisting user message:", {
+      chat_id,
+      user_id,
+      assistant_id,
+      lastSeq,
+      query,
+      model: chatSettings?.model || AZURE_DEPLOYMENT
+    })
+
+    // 2. Persist user message (if not already in DB)
+    if (chat_id && user_id && query) {
+      const { error: userInsertError, data: userInsertData } =
+        await supabaseServiceRole.from("messages").insert([
+          {
+            chat_id,
+            user_id,
+            assistant_id,
+            role: "user",
+            content: query,
+            model: chatSettings?.model || AZURE_DEPLOYMENT,
+            sequence_number: lastSeq + 1,
+            image_paths: []
+          }
+        ])
+      if (userInsertError) {
+        console.error(
+          "[WebSearch API] User message insert error:",
+          userInsertError
+        )
+      } else {
+        console.log(
+          "[WebSearch API] User message insert success:",
+          userInsertData
+        )
+      }
+    }
+
+    // 3. Persist assistant message
+    const assistantContent = resp.choices[0]?.message?.content ?? ""
+    if (chat_id && user_id && assistantContent) {
+      const { error: assistantInsertError, data: assistantInsertData } =
+        await supabaseServiceRole.from("messages").insert([
+          {
+            chat_id,
+            user_id,
+            assistant_id,
+            role: "assistant",
+            content: assistantContent,
+            model: chatSettings?.model || AZURE_DEPLOYMENT,
+            sequence_number: lastSeq + 2,
+            image_paths: []
+          }
+        ])
+      if (assistantInsertError) {
+        console.error(
+          "[WebSearch API] Assistant message insert error:",
+          assistantInsertError
+        )
+      } else {
+        console.log(
+          "[WebSearch API] Assistant message insert success:",
+          assistantInsertData
+        )
+      }
+    }
+
+    return NextResponse.json({ message: assistantContent }, { status: 200 })
   } catch (err: any) {
     console.error("web-search error:", err)
-    return new Response(
-      JSON.stringify({ error: err.message || "Unexpected server error" }),
+    return NextResponse.json(
+      { error: err.message || "Unexpected server error" },
       { status: 500 }
     )
   }
