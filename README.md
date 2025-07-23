@@ -25,7 +25,7 @@ npm install
 (Docker + Supabase CLI nötig)
 supabase start
 
-4️⃣ .env anlegen
+4️⃣ .env r
 cp .env.local.example .env.local
 
 Fülle die nötigen Variablen mit deinen Supabase-Daten.

@@ -43,12 +43,21 @@ export const createMessage = async (message: TablesInsert<"messages">) => {
 }
 
 export const createMessages = async (messages: TablesInsert<"messages">[]) => {
+  // Ensure all required fields are present
+  const validatedMessages = messages.map(msg => ({
+    ...msg,
+    image_paths: msg.image_paths || [],
+    created_at: msg.created_at || new Date().toISOString(),
+    updated_at: msg.updated_at || new Date().toISOString()
+  }))
+
   const { data: createdMessages, error } = await supabase
     .from("messages")
-    .insert(messages)
+    .insert(validatedMessages)
     .select("*")
 
   if (error) {
+    console.error("Failed to create messages:", error)
     throw new Error(error.message)
   }
 

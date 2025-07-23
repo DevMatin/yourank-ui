@@ -321,18 +321,19 @@ export const processResponse = async (
 
         setChatMessages(prev =>
           prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              const updatedChatMessage: ChatMessage = {
+            if (
+              chatMessage?.message?.id &&
+              lastChatMessage?.message?.id &&
+              chatMessage.message.id === lastChatMessage.message.id
+            ) {
+              return {
+                ...chatMessage,
                 message: {
                   ...chatMessage.message,
                   content: fullText
-                },
-                fileItems: chatMessage.fileItems
+                }
               }
-
-              return updatedChatMessage
             }
-
             return chatMessage
           })
         )
