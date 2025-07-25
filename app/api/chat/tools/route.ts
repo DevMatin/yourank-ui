@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const openai = new OpenAI({
       apiKey: profile.openai_api_key || "",
-      baseURL: "https://yourankai.openai.azure.com/openai/deployments/gpt-4-1", // oder baue es aus ENV
+      baseURL: "https://yourankai.openai.azure.com/openai/deployments/gpt-4-1",
       defaultQuery: { "api-version": "2025-04-14" }
     })
 
@@ -53,12 +53,24 @@ export async function POST(request: Request) {
           url: convertedSchema.info.server,
           headers: selectedTool.custom_headers,
           routeMap,
-          requestInBody: convertedSchema.routes[0].requestInBody
+          requestInBody: convertedSchema.routes[0].requestInBody,
+          toolName: selectedTool.name
         })
       } catch (error: any) {
-        console.error("Error converting schema", error)
+        console.error(
+          "Error converting schema for tool:",
+          selectedTool.name,
+          error
+        )
       }
     }
+
+    // Check if web search is enabled
+    const isWebSearch = selectedTools.some(
+      tool =>
+        tool.name?.toLowerCase().includes("web") &&
+        tool.name?.toLowerCase().includes("search")
+    )
 
     const firstResponse = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
@@ -71,11 +83,19 @@ export async function POST(request: Request) {
     const toolCalls = message.tool_calls || []
 
     if (toolCalls.length === 0) {
-      return new Response(message.content, {
-        headers: {
-          "Content-Type": "application/json"
+      // For regular responses without tool calls
+      // Use streaming format for consistency between regular and tool responses
+      // Create a ReadableStream to stream the assistant's message content
+      const stream = new ReadableStream({
+        start(controller) {
+          if (message.content) {
+            controller.enqueue(message.content)
+          }
+          controller.close()
         }
       })
+
+      return new StreamingTextResponse(stream)
     }
 
     if (toolCalls.length > 0) {
@@ -103,7 +123,7 @@ export async function POST(request: Request) {
         }
 
         const path = pathTemplate.replace(/:(\w+)/g, (_, paramName) => {
-          const value = parsedArgs.parameters[paramName]
+          const value = parsedArgs.parameters?.[paramName]
           if (!value) {
             throw new Error(
               `Parameter ${paramName} not found for function ${functionName}`
@@ -112,29 +132,22 @@ export async function POST(request: Request) {
           return encodeURIComponent(value)
         })
 
-        if (!path) {
-          throw new Error(`Path for function ${functionName} not found`)
-        }
-
         // Determine if the request should be in the body or as a query
         const isRequestInBody = schemaDetail.requestInBody
         let data = {}
 
         if (isRequestInBody) {
-          // If the type is set to body
           let headers = {
             "Content-Type": "application/json"
           }
 
           // Check if custom headers are set
-          const customHeaders = schemaDetail.headers // Moved this line up to the loop
-          // Check if custom headers are set and are of type string
+          const customHeaders = schemaDetail.headers
           if (customHeaders && typeof customHeaders === "string") {
             let parsedCustomHeaders = JSON.parse(customHeaders) as Record<
               string,
               string
             >
-
             headers = {
               ...headers,
               ...parsedCustomHeaders
@@ -143,25 +156,34 @@ export async function POST(request: Request) {
 
           const fullUrl = schemaDetail.url + path
 
-          const bodyContent = parsedArgs.requestBody || parsedArgs
+          // Special handling for DataForSEO tools
+          let bodyContent = parsedArgs.requestBody || parsedArgs
+          if (schemaDetail.toolName?.toLowerCase().includes("dataforseo")) {
+            // DataForSEO expects arrays as request body
+            bodyContent = Array.isArray(bodyContent)
+              ? bodyContent
+              : [bodyContent]
+          }
 
           const requestInit = {
             method: "POST",
             headers,
-            body: JSON.stringify(bodyContent) // Use the extracted requestBody or the entire parsedArgs
+            body: JSON.stringify(bodyContent)
           }
 
           const response = await fetch(fullUrl, requestInit)
 
           if (!response.ok) {
+            const errorText = await response.text()
+            console.error(`API Error ${response.status}: ${errorText}`)
             data = {
-              error: response.statusText
+              error: `API Error ${response.status}: ${errorText}`
             }
           } else {
             data = await response.json()
           }
         } else {
-          // If the type is set to query
+          // Query parameters approach
           const queryParams = new URLSearchParams(
             parsedArgs.parameters
           ).toString()
@@ -170,7 +192,6 @@ export async function POST(request: Request) {
 
           let headers = {}
 
-          // Check if custom headers are set
           const customHeaders = schemaDetail.headers
           if (customHeaders && typeof customHeaders === "string") {
             headers = JSON.parse(customHeaders)
@@ -182,8 +203,9 @@ export async function POST(request: Request) {
           })
 
           if (!response.ok) {
+            const errorText = await response.text()
             data = {
-              error: response.statusText
+              error: `API Error ${response.status}: ${errorText}`
             }
           } else {
             data = await response.json()
@@ -199,6 +221,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // For both web search and other tools, use the same streaming approach
     const secondResponse = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
@@ -209,7 +232,7 @@ export async function POST(request: Request) {
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
-    console.error(error)
+    console.error("Chat tools error:", error)
     const errorMessage = error.error?.message || "An unexpected error occurred"
     const errorCode = error.status || 500
     return new Response(JSON.stringify({ message: errorMessage }), {

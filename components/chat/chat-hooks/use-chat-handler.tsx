@@ -278,34 +278,7 @@ export const useChatHandler = () => {
         if (!res.ok) throw new Error("Web‑search API error")
         const { message: assistantContent } = await res.json()
 
-        // Add user message to UI if not present
-        let updatedMessages = isRegeneration
-          ? [...chatMessages]
-          : [...chatMessages, tempUserChatMessage]
-        // Add assistant message to UI with 'web-search' label
-        if (assistantContent) {
-          const assistantMsg: ChatMessage = {
-            message: {
-              id: `assistant-${Date.now()}`,
-              chat_id: selectedChat?.id || "",
-              user_id: profile?.user_id || "",
-              assistant_id: "web-search", // Set label to 'web-search'
-              role: "assistant",
-              content: assistantContent,
-              model: chatSettings?.model || "",
-              sequence_number: updatedMessages.length,
-              image_paths: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            fileItems: []
-          }
-          updatedMessages = [...updatedMessages, assistantMsg]
-        }
-        setChatMessages(updatedMessages)
-
-        // Persist both user and assistant messages to the database for refresh persistence
-        let currentChat = selectedChat ? { ...selectedChat } : null
+        // Create current chat if needed
         if (!currentChat) {
           currentChat = await handleCreateChat(
             chatSettings!,
@@ -319,8 +292,9 @@ export const useChatHandler = () => {
             setChatFiles
           )
         }
+
         await handleCreateMessages(
-          updatedMessages,
+          chatMessages, // Use original chatMessages, not the ones with temp messages added
           currentChat,
           profile!,
           modelData!,
