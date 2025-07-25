@@ -85,21 +85,14 @@ export async function POST(request: Request) {
     if (toolCalls.length === 0) {
       // For regular responses without tool calls
       // Use streaming format for consistency between regular and tool responses
-      const stream = OpenAIStream({
-        id: firstResponse.id,
-        object: "chat.completion",
-        created: firstResponse.created,
-        model: firstResponse.model,
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: "assistant",
-              content: message.content
-            },
-            finish_reason: "stop"
+      // Create a ReadableStream to stream the assistant's message content
+      const stream = new ReadableStream({
+        start(controller) {
+          if (message.content) {
+            controller.enqueue(message.content)
           }
-        ]
+          controller.close()
+        }
       })
 
       return new StreamingTextResponse(stream)
