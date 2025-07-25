@@ -1,5 +1,3 @@
-// app/api/web-search/route.ts
-
 import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 
@@ -93,40 +91,67 @@ export async function POST(req: NextRequest) {
       defaultQuery: { "api-version": "2023-12-01-preview" }
     })
 
-    // 6) rebuild history
-    const history = Array.isArray(messages)
-      ? messages
-          .map((m: any) => {
-            const msg = m.message ?? m
-            return msg.role && msg.content
-              ? { role: msg.role, content: msg.content }
-              : null
-          })
-          .filter((m): m is { role: string; content: string } => !!m)
-      : []
+    // 6) rebuild history - properly filter out null values
+    const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+      []
 
-    // 7) construct prompt
-    const systemMsg = {
-      role: "system" as const,
-      content:
-        "You are ChatGPT, a helpful assistant. Use the up‑to‑date web search results below; cite sources by number."
+    if (Array.isArray(messages)) {
+      for (const m of messages) {
+        const msg = m.message ?? m
+
+        // Skip if no role or content
+        if (!msg.role || !msg.content || typeof msg.content !== "string") {
+          continue
+        }
+
+        // Create properly typed message based on role
+        if (msg.role === "user") {
+          validMessages.push({
+            role: "user",
+            content: msg.content
+          })
+        } else if (msg.role === "assistant") {
+          validMessages.push({
+            role: "assistant",
+            content: msg.content
+          })
+        } else if (msg.role === "system") {
+          validMessages.push({
+            role: "system",
+            content: msg.content
+          })
+        }
+        // Skip any other roles
+      }
     }
-    const toolMsg = {
-      role: "assistant" as const,
-      name: "web_search_tool",
-      content: JSON.stringify(search_results, null, 2)
-    }
-    const userMsg = {
-      role: "user" as const,
+
+    const history = validMessages
+
+    // 7) construct prompt with proper typing
+    const systemMsg: OpenAI.Chat.Completions.ChatCompletionSystemMessageParam =
+      {
+        role: "system",
+        content:
+          "You are ChatGPT, a helpful assistant. Use the up‑to‑date web search results below; cite sources by number."
+      }
+
+    const searchResultsMsg: OpenAI.Chat.Completions.ChatCompletionUserMessageParam =
+      {
+        role: "user",
+        content: `Here are the search results for "${query}":\n\n${JSON.stringify(search_results, null, 2)}`
+      }
+
+    const userMsg: OpenAI.Chat.Completions.ChatCompletionUserMessageParam = {
+      role: "user",
       content: `User asked: "${query}". Use the search results above to answer.`
     }
 
-    // 8) call Azure
+    // 8) call Azure with properly typed messages
     const resp = await client.chat.completions.create({
       model: AZURE_DEPLOYMENT,
       temperature: chatSettings?.temperature ?? 0,
       max_tokens: 1200,
-      messages: [systemMsg, toolMsg, userMsg, ...history]
+      messages: [systemMsg, searchResultsMsg, userMsg, ...history]
     })
 
     const assistantContent = resp.choices[0]?.message?.content || ""
