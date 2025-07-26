@@ -72,7 +72,7 @@ interface ChatbotUIContext {
   setUserInput: Dispatch<SetStateAction<string>>
   chatMessages: ChatMessage[]
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>
-  chatSettings: ChatSettings | null
+  chatSettings: ChatSettings
   setChatSettings: Dispatch<SetStateAction<ChatSettings>>
   selectedChat: Tables<"chats"> | null
   setSelectedChat: Dispatch<SetStateAction<Tables<"chats"> | null>>
@@ -136,6 +136,10 @@ interface ChatbotUIContext {
   setSelectedTools: Dispatch<SetStateAction<Tables<"tools">[]>>
   toolInUse: string
   setToolInUse: Dispatch<SetStateAction<string>>
+
+  // WEB SEARCH STORE
+  useWebSearch: boolean
+  setUseWebSearch: Dispatch<SetStateAction<boolean>>
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
@@ -200,7 +204,15 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setSelectedChat: () => {},
   chatMessages: [],
   setChatMessages: () => {},
-  chatSettings: null,
+  chatSettings: {
+    model: "gpt-4-turbo-preview",
+    prompt: "You are a helpful AI assistant.",
+    temperature: 0.5,
+    contextLength: 4000,
+    includeProfileContext: true,
+    includeWorkspaceInstructions: true,
+    embeddingsProvider: "openai"
+  },
   setChatSettings: () => {},
   chatFileItems: [],
   setChatFileItems: () => {},
@@ -261,5 +273,9 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   selectedTools: [],
   setSelectedTools: () => {},
   toolInUse: "none",
-  setToolInUse: () => {}
+  setToolInUse: () => {},
+
+  // WEB SEARCH STORE
+  useWebSearch: false,
+  setUseWebSearch: () => {}
 })

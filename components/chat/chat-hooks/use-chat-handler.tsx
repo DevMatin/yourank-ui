@@ -66,7 +66,9 @@ export const useChatHandler = () => {
     models,
     isPromptPickerOpen,
     isFilePickerOpen,
-    isToolPickerOpen
+    isToolPickerOpen,
+    useWebSearch,
+    setUseWebSearch
   } = useContext(ChatbotUIContext)
 
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
@@ -98,6 +100,9 @@ export const useChatHandler = () => {
 
     setSelectedTools([])
     setToolInUse("none")
+
+    // Reset web search to default (disabled) for new chats
+    setUseWebSearch(false)
 
     if (selectedAssistant) {
       setChatSettings({

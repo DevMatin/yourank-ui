@@ -2,7 +2,7 @@ import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
 import { Database } from "@/supabase/types"
 import { createClient } from "@supabase/supabase-js"
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
 
 export const POST = async (request: Request) => {
   try {
@@ -18,7 +18,7 @@ export const POST = async (request: Request) => {
 
     const supabaseAdmin = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-       process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
     try {
@@ -42,9 +42,9 @@ export const POST = async (request: Request) => {
 
       return NextResponse.json({ results: mostSimilarChunks })
     } catch (error: any) {
-      console.error('Local embedding error:', error)
+      console.error("Local embedding error:", error)
       return NextResponse.json(
-        { 
+        {
           message: error.message || "Error processing your request",
           details: error
         },
@@ -52,17 +52,19 @@ export const POST = async (request: Request) => {
       )
     }
   } catch (error: any) {
-    console.error('Retrieval API error:', error)
+    console.error("Retrieval API error:", error)
     return NextResponse.json(
-      { 
-        message: error.error?.message || error.message || "An unexpected error occurred",
+      {
+        message:
+          error.error?.message ||
+          error.message ||
+          "An unexpected error occurred",
         details: error
       },
       { status: error.status || 500 }
     )
   }
 }
-
 
 // import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
 // import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
@@ -166,4 +168,3 @@ export const POST = async (request: Request) => {
 //     })
 //   }
 // }
-

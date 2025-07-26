@@ -27,7 +27,6 @@ interface ChatInputProps {}
 export const ChatInput: FC<ChatInputProps> = () => {
   const { t } = useTranslation()
   const [isTyping, setIsTyping] = useState(false)
-  const [useWebSearch, setUseWebSearch] = useState(false)
 
   const {
     isAssistantPickerOpen,
@@ -51,7 +50,9 @@ export const ChatInput: FC<ChatInputProps> = () => {
     chatSettings,
     selectedTools,
     setSelectedTools,
-    assistantImages
+    assistantImages,
+    useWebSearch,
+    setUseWebSearch
   } = useContext(ChatbotUIContext)
 
   const {
