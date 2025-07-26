@@ -7,6 +7,7 @@ import { getProfileByUserId } from "@/db/profile"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
 import { getWorkspacesByUserId } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { useWebSearchPersistence } from "@/lib/hooks/use-web-search"
 import {
   fetchHostedModels,
   fetchOllamaModels,
@@ -122,6 +123,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   // TOOL STORE
   const [selectedTools, setSelectedTools] = useState<Tables<"tools">[]>([])
   const [toolInUse, setToolInUse] = useState<string>("none")
+
+  // WEB SEARCH STORE with localStorage persistence
+  const { useWebSearch, setUseWebSearch } = useWebSearchPersistence()
 
   useEffect(() => {
     ;(async () => {
@@ -322,7 +326,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         selectedTools,
         setSelectedTools,
         toolInUse,
-        setToolInUse
+        setToolInUse,
+
+        // WEB SEARCH STORE
+        useWebSearch,
+        setUseWebSearch
       }}
     >
       {children}
