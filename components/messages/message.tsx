@@ -11,7 +11,8 @@ import {
   IconCircleFilled,
   IconFileText,
   IconMoodSmile,
-  IconPencil
+  IconPencil,
+  IconWorld
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { FC, useContext, useEffect, useRef, useState } from "react"
@@ -283,6 +284,14 @@ export const Message: FC<MessageProps> = ({
                         <IconFileText size={20} />
 
                         <div>Searching files...</div>
+                      </div>
+                    )
+                  case "web-search":
+                    return (
+                      <div className="flex animate-pulse items-center space-x-2">
+                        <IconWorld size={20} />
+
+                        <div>Searching the web...</div>
                       </div>
                     )
                   default:

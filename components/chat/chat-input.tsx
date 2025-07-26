@@ -50,9 +50,7 @@ export const ChatInput: FC<ChatInputProps> = () => {
     chatSettings,
     selectedTools,
     setSelectedTools,
-    assistantImages,
-    useWebSearch,
-    setUseWebSearch
+    assistantImages
   } = useContext(ChatbotUIContext)
 
   const {
@@ -78,11 +76,11 @@ export const ChatInput: FC<ChatInputProps> = () => {
   }, [selectedPreset, selectedAssistant])
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    // on Enter (no shift) send, passing useWebSearch flag
+    // on Enter (no shift) send - web search auto-detected
     if (!isTyping && event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
       setIsPromptPickerOpen(false)
-      handleSendMessage(userInput, chatMessages, false, useWebSearch)
+      handleSendMessage(userInput, chatMessages, false)
     }
 
     // navigate pickers
@@ -179,18 +177,12 @@ export const ChatInput: FC<ChatInputProps> = () => {
           </div>
         )}
 
-        {/* ==== web‑search toggle ==== */}
+        {/* ==== Auto web search enabled ==== */}
         <div className="flex items-center px-4">
-          <input
-            id="web-search-toggle"
-            type="checkbox"
-            checked={useWebSearch}
-            onChange={e => setUseWebSearch(e.target.checked)}
-            className="mr-2 size-4 rounded border-gray-300"
-          />
-          <label htmlFor="web-search-toggle" className="text-sm">
-            {t("Websuche aktivieren")}
-          </label>
+          <div className="mr-2 flex size-4 items-center justify-center">🔍</div>
+          <span className="text-muted-foreground text-sm">
+            {t("Websuche automatisch aktiviert")}
+          </span>
         </div>
       </div>
 
@@ -248,7 +240,7 @@ export const ChatInput: FC<ChatInputProps> = () => {
               )}
               onClick={() => {
                 if (!userInput) return
-                handleSendMessage(userInput, chatMessages, false, useWebSearch)
+                handleSendMessage(userInput, chatMessages, false)
               }}
               size={30}
             />
