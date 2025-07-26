@@ -66,9 +66,7 @@ export const useChatHandler = () => {
     models,
     isPromptPickerOpen,
     isFilePickerOpen,
-    isToolPickerOpen,
-    useWebSearch,
-    setUseWebSearch
+    isToolPickerOpen
   } = useContext(ChatbotUIContext)
 
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
@@ -100,9 +98,6 @@ export const useChatHandler = () => {
 
     setSelectedTools([])
     setToolInUse("none")
-
-    // Reset web search to default (disabled) for new chats
-    setUseWebSearch(false)
 
     if (selectedAssistant) {
       setChatSettings({
@@ -196,8 +191,7 @@ export const useChatHandler = () => {
   const handleSendMessage = async (
     messageContent: string,
     chatMessages: ChatMessage[],
-    isRegeneration: boolean,
-    useWebSearch: boolean = false
+    isRegeneration: boolean
   ) => {
     const startingInput = messageContent
 
@@ -265,7 +259,37 @@ export const useChatHandler = () => {
           selectedAssistant
         )
 
-      if (useWebSearch) {
+      // Auto-detect if web search is needed
+      let needsWebSearch = false
+      try {
+        const autoDetectRes = await fetch("/api/chat/auto-detect-web-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: newAbortController.signal,
+          body: JSON.stringify({
+            query: messageContent,
+            messages: isRegeneration
+              ? chatMessages
+              : [...chatMessages, tempUserChatMessage]
+          })
+        })
+
+        if (autoDetectRes.ok) {
+          const { needsWebSearch: detected } = await autoDetectRes.json()
+          needsWebSearch = detected
+          console.log(
+            `Auto-detected web search needed: ${needsWebSearch} for query: "${messageContent}"`
+          )
+        }
+      } catch (error) {
+        console.log(
+          "Auto-detection failed, proceeding without web search:",
+          error
+        )
+        needsWebSearch = false
+      }
+
+      if (needsWebSearch) {
         setToolInUse("web-search")
 
         const res = await fetch("/api/chat/web-search", {
