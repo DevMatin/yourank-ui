@@ -259,34 +259,75 @@ export const useChatHandler = () => {
           selectedAssistant
         )
 
-      // Auto-detect if web search is needed
-      let needsWebSearch = false
+      // Auto-detect if URL crawling is needed (prioritize over web search)
+      let needsCrawling = false
+      let crawlUrl = ""
+      let cleanedQuery = messageContent
       try {
-        const autoDetectRes = await fetch("/api/chat/auto-detect-web-search", {
+        const urlDetectRes = await fetch("/api/chat/detect-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: newAbortController.signal,
           body: JSON.stringify({
-            query: messageContent,
-            messages: isRegeneration
-              ? chatMessages
-              : [...chatMessages, tempUserChatMessage]
+            query: messageContent
           })
         })
 
-        if (autoDetectRes.ok) {
-          const { needsWebSearch: detected } = await autoDetectRes.json()
-          needsWebSearch = detected
+        if (urlDetectRes.ok) {
+          const { shouldCrawl, data } = await urlDetectRes.json()
+          needsCrawling = shouldCrawl
+          crawlUrl = data.mainUrl || ""
+          cleanedQuery = data.cleanedQuery || messageContent
           console.log(
-            `Auto-detected web search needed: ${needsWebSearch} for query: "${messageContent}"`
+            `🕷️ AUTO-CRAWL DECISION: ${needsCrawling ? "YES" : "NO"} for URL: "${crawlUrl}"`
           )
+          console.log(`   Original query: "${messageContent}"`)
+          console.log(`   Cleaned query: "${cleanedQuery}"`)
         }
       } catch (error) {
+        console.log("URL detection failed, proceeding without crawling:", error)
+        needsCrawling = false
+      }
+
+      // Auto-detect if web search is needed (only if no crawling needed)
+      let needsWebSearch = false
+      if (!needsCrawling) {
+        console.log("🌐 Checking for web search since no crawling needed...")
+        try {
+          const autoDetectRes = await fetch(
+            "/api/chat/auto-detect-web-search",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: newAbortController.signal,
+              body: JSON.stringify({
+                query: messageContent,
+                messages: isRegeneration
+                  ? chatMessages
+                  : [...chatMessages, tempUserChatMessage]
+              })
+            }
+          )
+
+          if (autoDetectRes.ok) {
+            const { needsWebSearch: detected } = await autoDetectRes.json()
+            needsWebSearch = detected
+            console.log(
+              `🌐 AUTO-WEB-SEARCH DECISION: ${needsWebSearch ? "YES" : "NO"} for query: "${messageContent}"`
+            )
+          }
+        } catch (error) {
+          console.log(
+            "Auto-detection failed, proceeding without web search:",
+            error
+          )
+          needsWebSearch = false
+        }
+      } else {
         console.log(
-          "Auto-detection failed, proceeding without web search:",
-          error
+          "🚫 Skipping web search because crawling is needed for URL:",
+          crawlUrl
         )
-        needsWebSearch = false
       }
 
       if (needsWebSearch) {
@@ -344,6 +385,7 @@ export const useChatHandler = () => {
         return
       }
 
+      // Initialize payload for chat processing
       let payload: ChatPayload = {
         chatSettings: chatSettings!,
         workspaceInstructions: selectedWorkspace!.instructions || "",
@@ -355,9 +397,257 @@ export const useChatHandler = () => {
         chatFileItems: chatFileItems
       }
 
+      // Handle website crawling if detected
+      if (needsCrawling && crawlUrl) {
+        setToolInUse("website-crawler")
+
+        try {
+          const crawlRes = await fetch("/api/chat/crawl-website", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: newAbortController.signal,
+            body: JSON.stringify({
+              url: crawlUrl
+            })
+          })
+
+          if (!crawlRes.ok) throw new Error("Website crawling API error")
+          const {
+            success,
+            data: crawlData,
+            message: crawlMessage
+          } = await crawlRes.json()
+
+          if (success && crawlData) {
+            // Create a comprehensive prompt with the crawled content
+            const crawlPrompt = `I crawled the website "${crawlData.title}" from ${crawlData.url} and extracted the following content:
+
+**Website Title:** ${crawlData.title}
+**URL:** ${crawlData.url}
+**Description:** ${crawlData.description || "No description available"}
+**Content Length:** ${crawlData.metadata.wordCount} words
+**Crawled At:** ${new Date(crawlData.metadata.crawledAt).toLocaleString()}
+
+**Website Content:**
+${crawlData.content}
+
+**User's Question/Request:**
+${cleanedQuery}
+
+Please analyze the website content and respond to the user's question or request about this website.`
+
+            // Create current chat if needed
+            if (!currentChat) {
+              currentChat = await handleCreateChat(
+                chatSettings!,
+                profile!,
+                selectedWorkspace!,
+                messageContent,
+                selectedAssistant!,
+                newMessageFiles,
+                setSelectedChat,
+                setChats,
+                setChatFiles
+              )
+            }
+
+            // Continue with regular chat processing using the crawled content
+            payload = {
+              chatSettings: chatSettings!,
+              workspaceInstructions: selectedWorkspace!.instructions || "",
+              chatMessages: isRegeneration
+                ? [
+                    ...chatMessages.slice(0, -1),
+                    {
+                      ...chatMessages[chatMessages.length - 1],
+                      message: {
+                        ...chatMessages[chatMessages.length - 1].message,
+                        content: crawlPrompt
+                      }
+                    }
+                  ]
+                : [
+                    ...chatMessages,
+                    {
+                      ...tempUserChatMessage,
+                      message: {
+                        ...tempUserChatMessage.message,
+                        content: crawlPrompt
+                      }
+                    }
+                  ],
+              assistant: selectedChat?.assistant_id ? selectedAssistant : null,
+              messageFileItems: retrievedFileItems,
+              chatFileItems: chatFileItems
+            }
+
+            // Process the crawled content with the AI model
+            let generatedText = ""
+            setToolInUse("none")
+
+            if (modelData!.provider === "ollama") {
+              generatedText = await handleLocalChat(
+                payload,
+                profile!,
+                chatSettings!,
+                tempAssistantChatMessage,
+                isRegeneration,
+                newAbortController,
+                setIsGenerating,
+                setFirstTokenReceived,
+                setChatMessages,
+                setToolInUse
+              )
+            } else {
+              generatedText = await handleHostedChat(
+                payload,
+                profile!,
+                modelData!,
+                tempAssistantChatMessage,
+                isRegeneration,
+                newAbortController,
+                newMessageImages,
+                chatImages,
+                setIsGenerating,
+                setFirstTokenReceived,
+                setChatMessages,
+                setToolInUse
+              )
+            }
+
+            // Update chat and create messages
+            if (!currentChat) {
+              currentChat = await handleCreateChat(
+                chatSettings!,
+                profile!,
+                selectedWorkspace!,
+                messageContent,
+                selectedAssistant!,
+                newMessageFiles,
+                setSelectedChat,
+                setChats,
+                setChatFiles
+              )
+            } else {
+              const updatedChat = await updateChat(currentChat.id, {
+                updated_at: new Date().toISOString()
+              })
+              setChats(prevChats => {
+                const updatedChats = prevChats.map(prevChat =>
+                  prevChat.id === updatedChat.id ? updatedChat : prevChat
+                )
+                return updatedChats
+              })
+            }
+
+            await handleCreateMessages(
+              chatMessages,
+              currentChat,
+              profile!,
+              modelData!,
+              messageContent,
+              generatedText,
+              newMessageImages,
+              isRegeneration,
+              retrievedFileItems,
+              setChatMessages,
+              setChatFileItems,
+              setChatImages,
+              selectedAssistant
+            )
+
+            setIsGenerating(false)
+            setFirstTokenReceived(false)
+            setToolInUse("none")
+            return // Exit here after successful crawling and processing
+          } else {
+            throw new Error(crawlMessage || "Failed to crawl website")
+          }
+        } catch (crawlError: any) {
+          console.error(
+            "🚨 Crawling failed, falling back to web search:",
+            crawlError
+          )
+
+          // Fallback to web search if crawling fails
+          console.log("🔄 Attempting fallback to web search...")
+          setToolInUse("web-search")
+
+          try {
+            const fallbackRes = await fetch("/api/chat/web-search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: newAbortController.signal,
+              body: JSON.stringify({
+                query: `${cleanedQuery} ${crawlUrl}`, // Include both cleaned query and URL for search
+                chatSettings,
+                messages: isRegeneration
+                  ? chatMessages
+                  : [...chatMessages, tempUserChatMessage]
+              })
+            })
+
+            if (!fallbackRes.ok)
+              throw new Error("Fallback web search also failed")
+            const { message: assistantContent } = await fallbackRes.json()
+
+            console.log("✅ Fallback web search successful")
+
+            // Create current chat if needed
+            if (!currentChat) {
+              currentChat = await handleCreateChat(
+                chatSettings!,
+                profile!,
+                selectedWorkspace!,
+                messageContent,
+                selectedAssistant!,
+                newMessageFiles,
+                setSelectedChat,
+                setChats,
+                setChatFiles
+              )
+            }
+
+            await handleCreateMessages(
+              chatMessages,
+              currentChat,
+              profile!,
+              modelData!,
+              messageContent,
+              assistantContent || "",
+              newMessageImages,
+              isRegeneration,
+              [],
+              setChatMessages,
+              setChatFileItems,
+              setChatImages,
+              selectedAssistant
+            )
+
+            setToolInUse("none")
+            setIsGenerating(false)
+            setFirstTokenReceived(false)
+            return
+          } catch (fallbackError: any) {
+            console.error(
+              "🚨 Both crawling and web search fallback failed:",
+              fallbackError
+            )
+            throw new Error(
+              `Website crawling failed (${crawlError.message || crawlError}) and web search fallback also failed (${fallbackError.message || fallbackError})`
+            )
+          }
+        }
+      }
+
       let generatedText = ""
 
+      console.log(
+        `🔧 TOOLS CHECK: selectedTools.length = ${selectedTools.length}`,
+        selectedTools.map(t => t.name || t.id)
+      )
       if (selectedTools.length > 0) {
+        console.log("🛠️ Calling tools API because selectedTools.length > 0")
         setToolInUse("Tools")
 
         const formattedMessages = await buildFinalMessages(
